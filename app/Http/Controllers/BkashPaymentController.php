@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BkashTransaction;
 use App\Models\Payment;
 use App\Services\BkashService;
 use Illuminate\Http\Request;
@@ -13,11 +14,14 @@ class BkashPaymentController extends Controller
     public function __construct(protected BkashService $bkash) {}
 
     /**
-     * Show a simple form where the user enters an amount to test with.
+     * Show a simple form where the user enters an amount to test with,
+     * plus a history of past transactions.
      */
     public function index()
     {
-        return view('bkash.index');
+        $transactions = BkashTransaction::latest()->take(20)->get();
+
+        return view('bkash.index', compact('transactions'));
     }
 
     /**
@@ -29,14 +33,23 @@ class BkashPaymentController extends Controller
             'amount' => 'required|numeric|min:1',
         ]);
 
-        $result = $this->bkash->createPayment((float) $request->amount);
+        $invoiceNumber = 'INV-' . strtoupper(uniqid());
+
+        $result = $this->bkash->createPayment((float) $request->amount, $invoiceNumber);
 
         if (isset($result['error']) || !isset($result['bkashURL'])) {
             return back()->with('error', 'Payment could not be created: ' . json_encode($result));
         }
 
-        // Save paymentID in session in case you need it before the callback
-        session(['bkash_payment_id' => $result['paymentID']]);
+        // Save a "pending" record now, we'll update it once the callback fires
+        BkashTransaction::create([
+            'payment_id'     => $result['paymentID'],
+            'invoice_number' => $invoiceNumber,
+            'amount'         => $request->amount,
+            'currency'       => 'BDT',
+            'status'         => 'pending',
+            'raw_response'   => $result,
+        ]);
 
         return redirect()->away($result['bkashURL']);
     }
@@ -50,11 +63,19 @@ class BkashPaymentController extends Controller
         $paymentId = $request->query('paymentID');
         $status    = $request->query('status'); // success | failure | cancel
 
+        $transaction = BkashTransaction::where('payment_id', $paymentId)->first();
+
         if ($status !== 'success' || !$paymentId) {
+            $transaction?->update([
+                'status'             => $status === 'cancel' ? 'cancelled' : 'failed',
+                'transaction_status' => $status,
+            ]);
+
             return view('bkash.result', [
-                'success' => false,
-                'message' => 'Payment was cancelled or failed.',
-                'data'    => $request->all(),
+                'success'     => false,
+                'message'     => 'Payment was cancelled or failed.',
+                'data'        => $request->all(),
+                'transaction' => $transaction,
             ]);
         }
 
@@ -62,10 +83,19 @@ class BkashPaymentController extends Controller
 
         $success = ($result['transactionStatus'] ?? null) === 'Completed';
 
+        $transaction?->update([
+            'status'             => $success ? 'success' : 'failed',
+            'trx_id'             => $result['trxID'] ?? null,
+            'transaction_status' => $result['transactionStatus'] ?? null,
+            'customer_msisdn'    => $result['customerMsisdn'] ?? null,
+            'raw_response'       => $result,
+        ]);
+
         return view('bkash.result', [
-            'success' => $success,
-            'message' => $success ? 'Payment completed successfully.' : 'Payment execution failed.',
-            'data'    => $result,
+            'success'     => $success,
+            'message'     => $success ? 'Payment completed successfully.' : 'Payment execution failed.',
+            'data'        => $result,
+            'transaction' => $transaction,
         ]);
     }
 

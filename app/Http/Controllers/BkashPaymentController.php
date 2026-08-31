@@ -3,11 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\BkashTransaction;
-use App\Models\Payment;
 use App\Services\BkashService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Session;
 
 class BkashPaymentController extends Controller
 {

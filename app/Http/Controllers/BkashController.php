@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\BkashTransaction;
 use App\Services\BkashService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
-class BkashPaymentController extends Controller
+class BkashController extends Controller
 {
-    public function __construct(protected BkashService $bkash) {}
+    public function __construct(protected BkashService $bkash)
+    {
+    }
 
     /**
      * Show a simple form where the user enters an amount to test with,

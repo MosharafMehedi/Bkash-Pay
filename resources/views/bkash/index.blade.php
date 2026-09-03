@@ -84,6 +84,7 @@
                                         <span class="inline-block px-3 py-1 rounded-full text-xs font-medium border {{ $badge }}">
                                             {{ ucfirst($trx->status) }}
                                         </span>
+                                        
                                     </td>
                                     <td class="px-6 py-3 text-gray-500">{{ $trx->trx_id ?? '—' }}</td>
                                     <td class="px-6 py-3 text-gray-400">{{ $trx->created_at->format('d M, h:i A') }}</td>

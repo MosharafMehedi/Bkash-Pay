@@ -10,6 +10,7 @@ class BkashTransaction extends Model
         'payment_id',
         'trx_id',
         'invoice_number',
+        'customer_email',
         'amount',
         'currency',
         'status',

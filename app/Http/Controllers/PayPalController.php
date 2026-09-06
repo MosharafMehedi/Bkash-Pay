@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PaymentReceiptMail;
 use App\Models\PayPalTransaction;
 use App\Services\PayPalService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class PayPalController extends Controller
 {
@@ -30,6 +32,7 @@ class PayPalController extends Controller
     {
         $request->validate([
             'amount' => 'required|numeric|min:1',
+            'email'  => 'nullable|email',
         ]);
 
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
@@ -46,6 +49,7 @@ class PayPalController extends Controller
         PayPalTransaction::create([
             'order_id'       => $result['id'],
             'invoice_number' => $invoiceNumber,
+            'customer_email' => $request->email,
             'amount'         => $request->amount,
             'currency'       => config('paypal.currency'),
             'status'         => 'pending',
@@ -86,6 +90,11 @@ class PayPalController extends Controller
             'payer_email'   => $result['payer']['email_address'] ?? null,
             'raw_response'  => $result,
         ]);
+
+        if ($success && $transaction?->customer_email) {
+            Mail::to($transaction->customer_email)
+                ->send(new PaymentReceiptMail($transaction, 'PayPal', $transaction->capture_id));
+        }
 
         return view('paypal.result', [
             'success'     => $success,

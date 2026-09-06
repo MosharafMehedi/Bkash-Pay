@@ -362,6 +362,12 @@
                     <span class="val">1</span>
                 </div>
 
+                <div class="pay-title" style="margin-top:1.1rem;">Email for receipt</div>
+                <input
+                    type="email" name="email" placeholder="you@example.com" required
+                    style="width:100%; padding:0.6rem 0.7rem; border:1px solid #d8d0b8; background:#fdfbf3; font-family:'Space Mono',monospace; font-size:0.82rem; color:#201d1a;"
+                >
+
                 <hr class="rule">
 
                 <div class="total-row">

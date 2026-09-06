@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PaymentReceiptMail;
 use App\Models\SslCommerzTransaction;
 use App\Services\SslCommerzService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class SslCommerzController extends Controller
 {
@@ -31,12 +33,15 @@ class SslCommerzController extends Controller
     {
         $request->validate([
             'amount' => 'required|numeric|min:1',
+            'email'  => 'nullable|email',
         ]);
 
         $tranId = 'TRX-' . strtoupper(uniqid());
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
-        $result = $this->sslcommerz->initiatePayment((float) $request->amount, $tranId);
+        $result = $this->sslcommerz->initiatePayment((float) $request->amount, $tranId, [
+            'email' => $request->email,
+        ]);
 
         if (($result['status'] ?? null) !== 'SUCCESS' || !isset($result['GatewayPageURL'])) {
             return back()->with('error', 'Payment could not be initiated: ' . json_encode($result));
@@ -45,6 +50,7 @@ class SslCommerzController extends Controller
         SslCommerzTransaction::create([
             'tran_id'        => $tranId,
             'invoice_number' => $invoiceNumber,
+            'customer_email' => $request->email,
             'amount'         => $request->amount,
             'currency'       => config('sslcommerz.currency'),
             'status'         => 'pending',
@@ -77,6 +83,11 @@ class SslCommerzController extends Controller
             'gateway_status' => $result['status'] ?? null,
             'raw_response'   => $result,
         ]);
+
+        if ($success && $transaction?->customer_email) {
+            Mail::to($transaction->customer_email)
+                ->send(new PaymentReceiptMail($transaction, 'SSLCommerz', $transaction->bank_tran_id));
+        }
 
         return view('sslcommerz.result', [
             'success'     => $success,

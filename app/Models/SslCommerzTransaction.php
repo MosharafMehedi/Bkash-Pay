@@ -14,6 +14,7 @@ class SslCommerzTransaction extends Model
         'bank_tran_id',
         'card_type',
         'invoice_number',
+        'customer_email',
         'amount',
         'currency',
         'status',

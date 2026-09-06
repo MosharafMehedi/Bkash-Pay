@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PaymentReceiptMail;
 use App\Models\BkashTransaction;
 use App\Services\BkashService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class BkashController extends Controller
 {
@@ -30,6 +32,7 @@ class BkashController extends Controller
     {
         $request->validate([
             'amount' => 'required|numeric|min:1',
+            'email'  => 'nullable|email',
         ]);
 
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
@@ -44,6 +47,7 @@ class BkashController extends Controller
         BkashTransaction::create([
             'payment_id'     => $result['paymentID'],
             'invoice_number' => $invoiceNumber,
+            'customer_email' => $request->email,
             'amount'         => $request->amount,
             'currency'       => 'BDT',
             'status'         => 'pending',
@@ -89,6 +93,11 @@ class BkashController extends Controller
             'customer_msisdn'    => $result['customerMsisdn'] ?? null,
             'raw_response'       => $result,
         ]);
+
+        if ($success && $transaction?->customer_email) {
+            Mail::to($transaction->customer_email)
+                ->send(new PaymentReceiptMail($transaction, 'bKash', $transaction->trx_id));
+        }
 
         return view('bkash.result', [
             'success'     => $success,

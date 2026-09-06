@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class PayPalTransaction extends Model
 {
-    protected $table = 'paypal_transactions';
     protected $fillable = [
         'order_id',
         'capture_id',
         'invoice_number',
+        'customer_email',
         'amount',
         'currency',
         'status',

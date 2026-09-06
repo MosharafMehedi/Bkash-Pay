@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PaymentReceiptMail;
+use App\Models\Product;
 use App\Models\SslCommerzTransaction;
 use App\Services\SslCommerzService;
 use Illuminate\Http\Request;
@@ -14,33 +15,32 @@ class SslCommerzController extends Controller
     {
     }
 
-    /**
-     * Show a simple form where the user enters an amount to test with,
-     * plus a history of past transactions.
-     */
     public function index()
     {
-        $transactions = SslCommerzTransaction::latest()->take(20)->get();
+        $transactions = SslCommerzTransaction::where('user_id', auth()->id())->latest()->take(20)->get();
 
         return view('sslcommerz.index', compact('transactions'));
     }
 
     /**
-     * Initiate the payment session and redirect the user to the
-     * SSLCommerz gateway page.
+     * Initiate the payment session for a specific product and redirect
+     * the user to the SSLCommerz gateway page.
      */
     public function pay(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'email'  => 'nullable|email',
+            'product_id' => 'required|exists:products,id',
         ]);
+
+        $product = Product::findOrFail($request->product_id);
+        $user    = $request->user();
 
         $tranId = 'TRX-' . strtoupper(uniqid());
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
-        $result = $this->sslcommerz->initiatePayment((float) $request->amount, $tranId, [
-            'email' => $request->email,
+        $result = $this->sslcommerz->initiatePayment((float) $product->price_bdt, $tranId, [
+            'name'  => $user->name,
+            'email' => $user->email,
         ]);
 
         if (($result['status'] ?? null) !== 'SUCCESS' || !isset($result['GatewayPageURL'])) {
@@ -48,10 +48,12 @@ class SslCommerzController extends Controller
         }
 
         SslCommerzTransaction::create([
+            'user_id'        => $user->id,
+            'product_id'     => $product->id,
             'tran_id'        => $tranId,
             'invoice_number' => $invoiceNumber,
-            'customer_email' => $request->email,
-            'amount'         => $request->amount,
+            'customer_email' => $user->email,
+            'amount'         => $product->price_bdt,
             'currency'       => config('sslcommerz.currency'),
             'status'         => 'pending',
             'raw_response'   => $result,

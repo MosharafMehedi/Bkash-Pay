@@ -9,6 +9,8 @@ class SslCommerzTransaction extends Model
     protected $table = 'sslcommerz_transactions';
 
     protected $fillable = [
+        'user_id',
+        'product_id',
         'tran_id',
         'val_id',
         'bank_tran_id',
@@ -26,4 +28,14 @@ class SslCommerzTransaction extends Model
         'raw_response' => 'array',
         'amount'       => 'decimal:2',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

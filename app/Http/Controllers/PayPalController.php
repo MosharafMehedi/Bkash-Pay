@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\PaymentReceiptMail;
 use App\Models\PayPalTransaction;
+use App\Models\Product;
 use App\Services\PayPalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -14,30 +15,29 @@ class PayPalController extends Controller
     {
     }
 
-    /**
-     * Show a simple form where the user enters an amount to test with,
-     * plus a history of past transactions.
-     */
     public function index()
     {
-        $transactions = PayPalTransaction::latest()->take(20)->get();
+        $transactions = PayPalTransaction::where('user_id', auth()->id())->latest()->take(20)->get();
 
         return view('paypal.index', compact('transactions'));
     }
 
     /**
-     * Create the order and redirect the user to PayPal's approval page.
+     * Create the order for a specific product and redirect the user to
+     * PayPal's approval page.
      */
     public function pay(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'email'  => 'nullable|email',
+            'product_id' => 'required|exists:products,id',
         ]);
+
+        $product = Product::findOrFail($request->product_id);
+        $user    = $request->user();
 
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
-        $result = $this->paypal->createOrder((float) $request->amount, $invoiceNumber);
+        $result = $this->paypal->createOrder((float) $product->price_usd, $invoiceNumber);
 
         $approveUrl = collect($result['links'] ?? [])
             ->firstWhere('rel', 'approve')['href'] ?? null;
@@ -47,10 +47,12 @@ class PayPalController extends Controller
         }
 
         PayPalTransaction::create([
+            'user_id'        => $user->id,
+            'product_id'     => $product->id,
             'order_id'       => $result['id'],
             'invoice_number' => $invoiceNumber,
-            'customer_email' => $request->email,
-            'amount'         => $request->amount,
+            'customer_email' => $user->email,
+            'amount'         => $product->price_usd,
             'currency'       => config('paypal.currency'),
             'status'         => 'pending',
             'raw_response'   => $result,

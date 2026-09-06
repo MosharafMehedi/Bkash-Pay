@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class PayPalTransaction extends Model
 {
     protected $fillable = [
+        'user_id',
+        'product_id',
         'order_id',
         'capture_id',
         'invoice_number',
@@ -23,4 +25,14 @@ class PayPalTransaction extends Model
         'raw_response' => 'array',
         'amount'       => 'decimal:2',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

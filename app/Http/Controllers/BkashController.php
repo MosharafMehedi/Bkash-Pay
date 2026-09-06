@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\PaymentReceiptMail;
 use App\Models\BkashTransaction;
+use App\Models\Product;
 use App\Services\BkashService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -15,29 +16,32 @@ class BkashController extends Controller
     }
 
     /**
-     * Show a simple form where the user enters an amount to test with,
-     * plus a history of past transactions.
+     * Transaction history for the logged-in user (optional debug page).
      */
     public function index()
     {
-        $transactions = BkashTransaction::latest()->take(20)->get();
+        $transactions = BkashTransaction::where('user_id', auth()->id())->latest()->take(20)->get();
 
         return view('bkash.index', compact('transactions'));
     }
 
     /**
-     * Create the payment and redirect the user to bKash's payment page.
+     * Create the payment for a specific product and redirect the user
+     * to bKash's payment page. The amount comes from the product, not
+     * from user input, and the email comes from the logged-in account.
      */
     public function pay(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'email'  => 'nullable|email',
+            'product_id' => 'required|exists:products,id',
         ]);
+
+        $product = Product::findOrFail($request->product_id);
+        $user    = $request->user();
 
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
-        $result = $this->bkash->createPayment((float) $request->amount, $invoiceNumber);
+        $result = $this->bkash->createPayment((float) $product->price_bdt, $invoiceNumber);
 
         if (isset($result['error']) || !isset($result['bkashURL'])) {
             return back()->with('error', 'Payment could not be created: ' . json_encode($result));
@@ -45,10 +49,12 @@ class BkashController extends Controller
 
         // Save a "pending" record now, we'll update it once the callback fires
         BkashTransaction::create([
+            'user_id'        => $user->id,
+            'product_id'     => $product->id,
             'payment_id'     => $result['paymentID'],
             'invoice_number' => $invoiceNumber,
-            'customer_email' => $request->email,
-            'amount'         => $request->amount,
+            'customer_email' => $user->email,
+            'amount'         => $product->price_bdt,
             'currency'       => 'BDT',
             'status'         => 'pending',
             'raw_response'   => $result,

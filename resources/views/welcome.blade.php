@@ -3,444 +3,400 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Full-Stack Laravel Handbook — Checkout</title>
+    <title>Modern Payment Gateway Experience</title>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,600i|space-mono:400,700" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800" rel="stylesheet" />
 
     <style>
         :root {
-            --ink: #201d1a;
-            --ink-muted: #6b6558;
-            --paper: #f6f1e4;
-            --paper-shadow: #e9e2cf;
-            --bg: #15141c;
-            --bg-soft: #1d1c26;
-            --line: #c9c2ae;
-            --stamp: #a5342a;
-            --sage: #46654c;
+            --bg-start: #0b0f19;
+            --bg-end: #111827;
+            --accent-cyan: #06b6d4;
+            --accent-pink: #ec4899;
+            --accent-purple: #8b5cf6;
+            --glass-card: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
-            margin: 0;
-            background: var(--bg);
-            color: #ece8e0;
-            font-family: 'Space Mono', monospace;
+            background-color: var(--bg-start);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
             min-height: 100vh;
+            color: #ffffff;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .page {
-            display: grid;
-            grid-template-columns: 1.15fr 1fr;
-            min-height: 100vh;
+        /* ---------- Top Header Navbar ---------- */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 4rem;
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
         }
 
-        @media (max-width: 900px) {
-            .page { grid-template-columns: 1fr; }
+        .brand {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            letter-spacing: -0.02em;
         }
 
-        /* ---------- Left: story panel ---------- */
-        .story {
-            padding: 5rem 4rem;
+        .brand-logo-glow {
+            width: 12px;
+            height: 12px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent-cyan);
+        }
+
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-auth {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 0.65rem 1.6rem;
+            border-radius: 50px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-login {
+            color: #e2e8f0;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .btn-login:hover {
+            border-color: var(--accent-cyan);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .btn-register {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(6, 182, 212, 0.5);
+        }
+
+        /* ---------- Main Visual Display ---------- */
+        .viewport-main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .main-stage {
+            position: relative;
+            width: 100%;
+            max-width: 1050px;
+            height: 540px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Left Phone Area */
+        .phone-mockup {
+            width: 290px;
+            height: 480px;
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(25px);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 36px;
+            padding: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(6, 182, 212, 0.15);
             display: flex;
             flex-direction: column;
             justify-content: center;
-            background:
-                radial-gradient(circle at 15% 20%, rgba(165, 52, 42, 0.12), transparent 45%),
-                var(--bg);
+            align-items: center;
+            position: relative;
         }
 
-        @media (max-width: 900px) {
-            .story { padding: 3.5rem 1.75rem 2rem; }
-        }
-
-        .eyebrow {
-            font-size: 0.8rem;
-            color: #8f8a7c;
-            letter-spacing: 0.02em;
-            margin-bottom: 1.5rem;
-        }
-
-        .story h1 {
-            font-family: 'Fraunces', serif;
-            font-weight: 600;
-            font-size: clamp(2.2rem, 4.2vw, 3.4rem);
-            line-height: 1.08;
-            margin: 0 0 1.5rem;
-            color: #f6f1e4;
-            max-width: 12ch;
-        }
-
-        .story p.lede {
-            font-family: 'Fraunces', serif;
-            font-style: italic;
-            font-weight: 400;
-            font-size: 1.15rem;
-            color: #b8b2a2;
-            line-height: 1.55;
-            max-width: 38ch;
-            margin: 0 0 2.5rem;
-        }
-
-        .contents {
-            border-top: 1px solid #33323e;
-            padding-top: 1.75rem;
-            max-width: 30rem;
-        }
-
-        .contents-title {
-            font-size: 0.75rem;
-            color: #8f8a7c;
-            margin-bottom: 1rem;
-        }
-
-        .contents ol {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            counter-reset: chapter;
-        }
-
-        .contents li {
-            counter-increment: chapter;
+        .cart-graphic {
+            width: 100px;
+            height: 100px;
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 24px;
             display: flex;
-            gap: 1rem;
-            padding: 0.55rem 0;
-            font-size: 0.85rem;
-            color: #cfc9ba;
-            border-bottom: 1px dashed #2c2b36;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 25px rgba(6, 182, 212, 0.15);
         }
 
-        .contents li:last-child { border-bottom: none; }
-
-        .contents li::before {
-            content: counter(chapter, decimal-leading-zero);
-            color: #6b6a78;
-            flex-shrink: 0;
+        .cart-graphic svg {
+            width: 48px;
+            height: 48px;
+            fill: var(--accent-cyan);
         }
 
-        /* ---------- Right: receipt panel ---------- */
-        .receipt-wrap {
-            background: var(--bg-soft);
+        .gift-pills {
+            display: flex;
+            gap: 0.6rem;
+            margin-top: 1.25rem;
+        }
+
+        .pill-item {
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            color: #cbd5e1;
+        }
+
+        /* Middle Connecting Lines (SVG) */
+        .svg-connector {
+            position: absolute;
+            left: 280px;
+            width: 160px;
+            height: 360px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Payment Gateway Method Stack */
+        .method-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1.1rem;
+            z-index: 2;
+            margin-left: 9.5rem;
+        }
+
+        .payment-box {
+            width: 220px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px);
+            border-radius: 16px;
+            padding: 0.9rem 1.2rem;
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 4rem 2.5rem;
-        }
-
-        @media (max-width: 900px) {
-            .receipt-wrap { padding: 0 1.5rem 4rem; }
-        }
-
-        .receipt {
-            background: var(--paper);
-            color: var(--ink);
-            width: 100%;
-            max-width: 25rem;
-            padding: 2.25rem 2rem 2.5rem;
+            justify-content: space-between;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
             position: relative;
-            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.55);
         }
 
-        /* perforated top edge */
-        .receipt::before {
-            content: "";
+        .payment-box:hover {
+            transform: translateX(8px);
+            border-color: var(--accent-cyan);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.3);
+        }
+
+        .lock-icon-dot {
             position: absolute;
-            top: -10px;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background-image: radial-gradient(circle at 10px 10px, var(--bg-soft) 9px, transparent 9.5px);
-            background-size: 20px 20px;
-            background-repeat: repeat-x;
-        }
-
-        .receipt-head {
+            left: -32px;
+            width: 22px;
+            height: 22px;
+            background: #111827;
+            border: 1px solid var(--accent-cyan);
+            border-radius: 50%;
             display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 1.25rem;
+            justify-content: center;
+            align-items: center;
         }
 
-        .receipt-head .label {
-            font-size: 0.7rem;
-            letter-spacing: 0.04em;
-            color: var(--ink-muted);
+        .lock-icon-dot svg {
+            width: 10px;
+            height: 10px;
+            fill: var(--accent-cyan);
         }
 
-        .receipt-head .num {
-            font-size: 0.7rem;
-            color: var(--ink-muted);
-        }
-
-        .rule {
-            border: none;
-            border-top: 1px dashed var(--line);
-            margin: 1.1rem 0;
-        }
-
-        .line-item {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            font-size: 0.85rem;
-            padding: 0.3rem 0;
-            line-height: 1.5;
-        }
-
-        .line-item .desc { color: var(--ink-muted); }
-        .line-item .val { text-align: right; }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-top: 0.9rem;
-        }
-
-        .total-row .t-label {
-            font-family: 'Fraunces', serif;
+        .box-title {
+            font-weight: 700;
             font-size: 1rem;
         }
 
-        .total-row .t-amount {
-            font-family: 'Fraunces', serif;
-            font-weight: 600;
-            font-size: 1.6rem;
-        }
-
-        .total-row .t-sub {
-            font-size: 0.7rem;
-            color: var(--ink-muted);
-            display: block;
-            text-align: right;
-        }
-
-        /* payment method selector */
-        .pay-title {
-            font-size: 0.7rem;
-            letter-spacing: 0.04em;
-            color: var(--ink-muted);
-            margin: 1.6rem 0 0.75rem;
-        }
-
-        .methods {
+        /* Right Security Shield & Promo Badges */
+        .shield-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
-        }
-
-        .method {
-            display: flex;
             align-items: center;
-            gap: 0.75rem;
-            border: 1px solid #d8d0b8;
-            padding: 0.7rem 0.85rem;
-            cursor: pointer;
-            background: #fdfbf3;
-            transition: border-color 0.15s ease, background 0.15s ease;
+            gap: 2rem;
         }
 
-        .method:hover { border-color: var(--ink); }
-
-        .method input[type="radio"] {
-            accent-color: var(--stamp);
-            width: 15px;
-            height: 15px;
-            flex-shrink: 0;
+        .shield-box {
+            width: 180px;
+            height: 210px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%);
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 40px rgba(6, 182, 212, 0.15);
         }
 
-        .method .swatch {
-            width: 10px;
-            height: 10px;
+        .shield-box svg {
+            width: 64px;
+            height: 64px;
+            stroke: var(--accent-cyan);
+            filter: drop-shadow(0 0 10px var(--accent-cyan));
+        }
+
+        .floating-circles {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .circle-badge {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
             border-radius: 50%;
-            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            font-weight: 700;
+            color: var(--accent-pink);
+            transition: transform 0.3s ease;
         }
 
-        .swatch.bkash { background: #e2136e; }
-        .swatch.paypal { background: #1546a0; }
-        .swatch.sslcommerz { background: #1f7a4d; }
-
-        .method .m-name {
-            font-family: 'Fraunces', serif;
-            font-size: 0.95rem;
-            flex: 1;
+        .circle-badge:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-pink);
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
         }
 
-        .method .m-note {
-            font-size: 0.68rem;
-            color: var(--ink-muted);
-        }
-
-        .method.selected {
-            border-color: var(--ink);
-            background: #fff;
-        }
-
-        .submit-btn {
-            width: 100%;
-            margin-top: 1.5rem;
-            padding: 0.95rem;
-            background: var(--ink);
-            color: var(--paper);
-            border: none;
-            font-family: 'Space Mono', monospace;
-            font-size: 0.85rem;
-            letter-spacing: 0.02em;
-            cursor: pointer;
-            transition: background 0.15s ease;
-        }
-
-        .submit-btn:hover { background: #3a352d; }
-
-        .stamp {
-            position: absolute;
-            top: 1.6rem;
-            right: -0.5rem;
-            border: 2px solid var(--stamp);
-            color: var(--stamp);
-            font-family: 'Space Mono', monospace;
-            font-size: 0.65rem;
-            letter-spacing: 0.06em;
-            padding: 0.25rem 0.5rem;
-            transform: rotate(8deg);
-            opacity: 0.85;
-        }
-
-        .foot-note {
-            margin-top: 1.25rem;
-            font-size: 0.68rem;
-            color: var(--ink-muted);
-            text-align: center;
+        @media (max-width: 900px) {
+            .navbar { padding: 1rem 1.5rem; }
+            .main-stage { flex-direction: column; height: auto; gap: 2.5rem; }
+            .svg-connector { display: none; }
+            .method-stack { margin-left: 0; }
         }
     </style>
 </head>
 <body>
 
-    <div class="page">
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <a href="/" class="brand">
+            <div class="brand-logo-glow"></div>
+            mPay Gateway
+        </a>
+        <div class="auth-buttons">
+            <a href="{{ route('login') }}" class="btn-auth btn-login">Login</a>
+            <a href="{{ route('register') }}" class="btn-auth btn-register">Register</a>
+        </div>
+    </header>
 
-        {{-- Left: product story --}}
-        <div class="story">
-            <div class="eyebrow">mBuild Tech Labs — sandbox edition</div>
-            <h1>Full-Stack Laravel Handbook</h1>
-            <p class="lede">A practical field guide to shipping real Laravel applications — from authentication to background jobs to taking payment.</p>
+    <!-- Visual Landing Content -->
+    <div class="viewport-main">
+        <div class="main-stage">
 
-            <div class="contents">
-                <div class="contents-title">Table of Contents</div>
-                <ol>
-                    <li>Authentication &amp; roles</li>
-                    <li>Queues, jobs, and scheduling</li>
-                    <li>Accepting payments in Bangladesh</li>
-                    <li>Shipping and monitoring in production</li>
-                </ol>
+            <!-- 1. Left Phone & Shopping Assets (Image 2 Concept) -->
+            <div class="phone-mockup">
+                <div class="cart-graphic">
+                    <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                </div>
+                <h3 style="font-size: 1.05rem; font-weight:700;">Express Checkout</h3>
+                <p style="font-size:0.75rem; color:#94a3b8; margin-top:0.3rem;">Instant Payment Processing</p>
+
+                <div class="gift-pills">
+                    <span class="pill-item">📦 Gifts</span>
+                    <span class="pill-item">🛍️ Orders</span>
+                </div>
             </div>
+
+            <!-- SVG Circuit Connector (Image 1 Concept) -->
+            <svg class="svg-connector">
+                <path d="M 0 50 Q 80 50 150 20" stroke="#06b6d4" stroke-width="2" fill="none" stroke-dasharray="4" opacity="0.6"/>
+                <path d="M 0 140 L 150 110" stroke="#06b6d4" stroke-width="2" fill="none" stroke-dasharray="4" opacity="0.6"/>
+                <path d="M 0 230 L 150 200" stroke="#06b6d4" stroke-width="2" fill="none" stroke-dasharray="4" opacity="0.6"/>
+                <path d="M 0 310 Q 80 310 150 290" stroke="#06b6d4" stroke-width="2" fill="none" stroke-dasharray="4" opacity="0.6"/>
+            </svg>
+
+            <!-- 2. Middle Gateway Cards (bKash, Nagad, Visa, Bank) -->
+            <div class="method-stack">
+                <div class="payment-box">
+                    <div class="lock-icon-dot"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/></svg></div>
+                    <span class="box-title" style="color:#ec4899;">bKash</span>
+                    <span style="font-size:0.7rem; color:#94a3b8;">Mobile Pay</span>
+                </div>
+
+                <div class="payment-box">
+                    <div class="lock-icon-dot"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/></svg></div>
+                    <span class="box-title" style="color:#06b6d4;">Card / Visa</span>
+                    <span style="font-size:0.7rem; color:#94a3b8;">Instant Debit</span>
+                </div>
+
+                <div class="payment-box">
+                    <div class="lock-icon-dot"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/></svg></div>
+                    <span class="box-title" style="color:#f97316;">Nagad</span>
+                    <span style="font-size:0.7rem; color:#94a3b8;">MFS Banking</span>
+                </div>
+
+                <div class="payment-box">
+                    <div class="lock-icon-dot"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/></svg></div>
+                    <span class="box-title" style="color:#a855f7;">Bank Transfer</span>
+                    <span style="font-size:0.7rem; color:#94a3b8;">Direct Wire</span>
+                </div>
+            </div>
+
+            <!-- 3. Right Security Shield & Promo Badges -->
+            <div class="shield-wrapper">
+                <div class="shield-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(6, 182, 212, 0.1)"/>
+                        <path d="M12 8v4M12 16h.01" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <span style="font-size: 0.8rem; font-weight:700; margin-top:0.8rem;">256-Bit SSL</span>
+                    <span style="font-size:0.65rem; color:#94a3b8;">Encrypted</span>
+                </div>
+
+                <div class="floating-circles">
+                    <div class="circle-badge">%</div>
+                    <div class="circle-badge">★</div>
+                    <div class="circle-badge">🔒</div>
+                </div>
+            </div>
+
         </div>
-
-        {{-- Right: receipt / checkout --}}
-        <div class="receipt-wrap">
-            <form class="receipt" id="checkout-form" method="POST" action="{{ route('bkash.pay') }}">
-                @csrf
-                <div class="stamp">SANDBOX</div>
-
-                <div class="receipt-head">
-                    <span class="label">ORDER RECEIPT</span>
-                    <span class="num">No. LHB-0042</span>
-                </div>
-
-                <div class="line-item">
-                    <span class="desc">Item</span>
-                    <span class="val">Full-Stack Laravel Handbook</span>
-                </div>
-                <div class="line-item">
-                    <span class="desc">Format</span>
-                    <span class="val">PDF + EPUB</span>
-                </div>
-                <div class="line-item">
-                    <span class="desc">Qty</span>
-                    <span class="val">1</span>
-                </div>
-
-                <div class="pay-title" style="margin-top:1.1rem;">Email for receipt</div>
-                <input
-                    type="email" name="email" placeholder="you@example.com" required
-                    style="width:100%; padding:0.6rem 0.7rem; border:1px solid #d8d0b8; background:#fdfbf3; font-family:'Space Mono',monospace; font-size:0.82rem; color:#201d1a;"
-                >
-
-                <hr class="rule">
-
-                <div class="total-row">
-                    <span class="t-label">Total</span>
-                    <span>
-                        <span class="t-amount" id="amount-display">৳990</span>
-                        <span class="t-sub" id="amount-sub">BDT</span>
-                    </span>
-                </div>
-
-                <div class="pay-title">Pay with</div>
-                <div class="methods">
-                    <label class="method selected" data-currency="BDT" data-amount="990">
-                        <input type="radio" name="method" value="bkash" checked>
-                        <span class="swatch bkash"></span>
-                        <span class="m-name">bKash</span>
-                        <span class="m-note">Mobile banking</span>
-                    </label>
-
-                    <label class="method" data-currency="BDT" data-amount="990">
-                        <input type="radio" name="method" value="sslcommerz">
-                        <span class="swatch sslcommerz"></span>
-                        <span class="m-name">SSLCommerz</span>
-                        <span class="m-note">Card &amp; bank</span>
-                    </label>
-
-                    <label class="method" data-currency="USD" data-amount="9">
-                        <input type="radio" name="method" value="paypal">
-                        <span class="swatch paypal"></span>
-                        <span class="m-name">PayPal</span>
-                        <span class="m-note">Card / balance</span>
-                    </label>
-                </div>
-
-                <input type="hidden" name="amount" id="amount-field" value="990">
-
-                <button type="submit" class="submit-btn">Continue to payment →</button>
-
-                <div class="foot-note">Test transaction · no real money moves</div>
-            </form>
-        </div>
-
     </div>
-
-    <script>
-        const routes = {
-            bkash: "{{ route('bkash.pay') }}",
-            paypal: "{{ route('paypal.pay') }}",
-            sslcommerz: "{{ route('sslcommerz.pay') }}",
-        };
-
-        const form = document.getElementById('checkout-form');
-        const amountField = document.getElementById('amount-field');
-        const amountDisplay = document.getElementById('amount-display');
-        const amountSub = document.getElementById('amount-sub');
-        const methods = document.querySelectorAll('.method');
-
-        methods.forEach((el) => {
-            el.addEventListener('click', () => {
-                methods.forEach((m) => m.classList.remove('selected'));
-                el.classList.add('selected');
-
-                const radio = el.querySelector('input[type="radio"]');
-                const amount = el.dataset.amount;
-                const currency = el.dataset.currency;
-
-                form.action = routes[radio.value];
-                amountField.value = amount;
-                amountDisplay.textContent = (currency === 'USD' ? '$' : '৳') + amount;
-                amountSub.textContent = currency;
-            });
-        });
-    </script>
 
 </body>
 </html>

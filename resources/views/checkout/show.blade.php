@@ -5,370 +5,447 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Checkout — {{ $product->name }}</title>
 
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,600i|space-mono:400,700" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --ink: #201d1a;
-            --ink-muted: #6b6558;
-            --paper: #f6f1e4;
-            --bg: #15141c;
-            --bg-soft: #1d1c26;
-            --line: #c9c2ae;
-            --stamp: #a5342a;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --brand-primary: #2563eb;
+            --brand-primary-hover: #1d4ed8;
+            --border-color: #e2e8f0;
+            --border-active: #2563eb;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow-subtle: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-floating: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
-            margin: 0;
-            background: var(--bg);
-            color: #ece8e0;
-            font-family: 'Space Mono', monospace;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .page {
+        .checkout-container {
+            width: 100%;
+            max-width: 1040px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-floating);
             display: grid;
-            grid-template-columns: 1.15fr 1fr;
-            min-height: 100vh;
+            grid-template-columns: 1fr 1.1fr;
+            overflow: hidden;
         }
 
-        @media (max-width: 900px) {
-            .page { grid-template-columns: 1fr; }
+        @media (max-width: 868px) {
+            .checkout-container {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .story {
-            padding: 5rem 4rem;
+        /* Left Side: Summary & Details */
+        .summary-section {
+            background: #f8fafc;
+            padding: 3rem 2.5rem;
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            background:
-                radial-gradient(circle at 15% 20%, rgba(165, 52, 42, 0.12), transparent 45%),
-                var(--bg);
+            justify-content: space-between;
         }
 
-        @media (max-width: 900px) {
-            .story { padding: 3.5rem 1.75rem 2rem; }
+        @media (max-width: 868px) {
+            .summary-section {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 2rem 1.5rem;
+            }
         }
 
         .back-link {
-            color: #8f8a7c;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
             text-decoration: none;
-            font-size: 0.8rem;
+            font-size: 0.875rem;
+            font-weight: 500;
             margin-bottom: 2rem;
-            display: inline-block;
+            transition: color 0.15s ease;
         }
-        .back-link:hover { color: #ece8e0; }
 
-        .eyebrow {
+        .back-link:hover {
+            color: var(--text-main);
+        }
+
+        .product-badge {
+            display: inline-block;
+            background: #e0e7ff;
+            color: #3730a3;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .product-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.25;
+            margin-bottom: 0.75rem;
+        }
+
+        .product-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .price-breakdown {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .price-row:last-child {
+            margin-bottom: 0;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border-color);
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .total-amount {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .trust-badges {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            color: var(--text-muted);
             font-size: 0.8rem;
-            color: #8f8a7c;
-            letter-spacing: 0.02em;
+            font-weight: 500;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* Right Side: Payment Methods */
+        .payment-section {
+            padding: 3rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        @media (max-width: 868px) {
+            .payment-section {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        .section-header {
             margin-bottom: 1.5rem;
         }
 
-        .story h1 {
-            font-family: 'Fraunces', serif;
+        .section-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .section-header p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f1f5f9;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .user-chip span.email {
             font-weight: 600;
-            font-size: clamp(2rem, 4vw, 3rem);
-            line-height: 1.1;
-            margin: 0 0 1.5rem;
-            color: #f6f1e4;
-            max-width: 14ch;
+            color: var(--text-main);
         }
 
-        .story p.lede {
-            font-family: 'Fraunces', serif;
-            font-style: italic;
-            font-weight: 400;
-            font-size: 1.1rem;
-            color: #b8b2a2;
-            line-height: 1.55;
-            max-width: 38ch;
-            margin: 0;
+        .methods-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.875rem;
+            margin-bottom: 1.5rem;
         }
 
-        .receipt-wrap {
-            background: var(--bg-soft);
+        .method-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #ffffff;
+        }
+
+        .method-card:hover {
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+
+        .method-card.selected {
+            border-color: var(--border-active);
+            background: #f0f6ff;
+            box-shadow: 0 0 0 1px var(--border-active);
+        }
+
+        .method-radio {
+            margin-right: 0.875rem;
+            accent-color: var(--brand-primary);
+            width: 18px;
+            height: 18px;
+        }
+
+        .method-logo {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 4rem 2.5rem;
-        }
-
-        @media (max-width: 900px) {
-            .receipt-wrap { padding: 0 1.5rem 4rem; }
-        }
-
-        .receipt {
-            background: var(--paper);
-            color: var(--ink);
-            width: 100%;
-            max-width: 25rem;
-            padding: 2.25rem 2rem 2.5rem;
-            position: relative;
-            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.55);
-        }
-
-        .receipt::before {
-            content: "";
-            position: absolute;
-            top: -10px;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background-image: radial-gradient(circle at 10px 10px, var(--bg-soft) 9px, transparent 9.5px);
-            background-size: 20px 20px;
-            background-repeat: repeat-x;
-        }
-
-        .receipt-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 1.25rem;
-        }
-
-        .receipt-head .label {
-            font-size: 0.7rem;
-            letter-spacing: 0.04em;
-            color: var(--ink-muted);
-        }
-
-        .receipt-head .num {
-            font-size: 0.7rem;
-            color: var(--ink-muted);
-        }
-
-        .rule {
-            border: none;
-            border-top: 1px dashed var(--line);
-            margin: 1.1rem 0;
-        }
-
-        .line-item {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            font-size: 0.85rem;
-            padding: 0.3rem 0;
-            line-height: 1.5;
-        }
-
-        .line-item .desc { color: var(--ink-muted); }
-        .line-item .val { text-align: right; }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-top: 0.9rem;
-        }
-
-        .total-row .t-label {
-            font-family: 'Fraunces', serif;
-            font-size: 1rem;
-        }
-
-        .total-row .t-amount {
-            font-family: 'Fraunces', serif;
-            font-weight: 600;
-            font-size: 1.6rem;
-        }
-
-        .total-row .t-sub {
-            font-size: 0.7rem;
-            color: var(--ink-muted);
-            display: block;
-            text-align: right;
-        }
-
-        .pay-title {
-            font-size: 0.7rem;
-            letter-spacing: 0.04em;
-            color: var(--ink-muted);
-            margin: 1.6rem 0 0.75rem;
-        }
-
-        .methods {
-            display: flex;
-            flex-direction: column;
-            gap: 0.6rem;
-        }
-
-        .method {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            border: 1px solid #d8d0b8;
-            padding: 0.7rem 0.85rem;
-            cursor: pointer;
-            background: #fdfbf3;
-            transition: border-color 0.15s ease, background 0.15s ease;
-        }
-
-        .method:hover { border-color: var(--ink); }
-
-        .method input[type="radio"] {
-            accent-color: var(--stamp);
-            width: 15px;
-            height: 15px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #fff;
+            margin-right: 0.875rem;
             flex-shrink: 0;
         }
 
-        .method .swatch {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
+        .logo-bkash { background: #e2136e; }
+        .logo-sslcommerz { background: #0072bc; }
+        .logo-paypal { background: #003087; }
 
-        .swatch.bkash { background: #e2136e; }
-        .swatch.paypal { background: #1546a0; }
-        .swatch.sslcommerz { background: #1f7a4d; }
-
-        .method .m-name {
-            font-family: 'Fraunces', serif;
-            font-size: 0.95rem;
+        .method-info {
             flex: 1;
         }
 
-        .method .m-note {
-            font-size: 0.68rem;
-            color: var(--ink-muted);
+        .method-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
         }
 
-        .method.selected {
-            border-color: var(--ink);
-            background: #fff;
+        .method-desc {
+            font-size: 0.775rem;
+            color: var(--text-muted);
+        }
+
+        .sandbox-tag {
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
         }
 
         .submit-btn {
             width: 100%;
-            margin-top: 1.5rem;
-            padding: 0.95rem;
-            background: var(--ink);
-            color: var(--paper);
+            padding: 1rem;
+            background: var(--brand-primary);
+            color: #ffffff;
             border: none;
-            font-family: 'Space Mono', monospace;
-            font-size: 0.85rem;
-            letter-spacing: 0.02em;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.15s ease;
+            transition: background 0.15s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px -1px rgb(37 99 235 / 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
 
-        .submit-btn:hover { background: #3a352d; }
-
-        .stamp {
-            position: absolute;
-            top: 1.6rem;
-            right: -0.5rem;
-            border: 2px solid var(--stamp);
-            color: var(--stamp);
-            font-family: 'Space Mono', monospace;
-            font-size: 0.65rem;
-            letter-spacing: 0.06em;
-            padding: 0.25rem 0.5rem;
-            transform: rotate(8deg);
-            opacity: 0.85;
+        .submit-btn:hover {
+            background: var(--brand-primary-hover);
         }
 
-        .foot-note {
-            margin-top: 1.25rem;
-            font-size: 0.68rem;
-            color: var(--ink-muted);
-            text-align: center;
+        .submit-btn:active {
+            transform: scale(0.99);
         }
 
         .error-box {
-            background: #fdecea;
-            border: 1px solid #f3b5ac;
-            color: #7a2a20;
-            font-size: 0.78rem;
-            padding: 0.6rem 0.8rem;
-            margin-bottom: 1rem;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            font-size: 0.85rem;
+            padding: 0.875rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.25rem;
+        }
+
+        .security-footer {
+            margin-top: 1.25rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
     </style>
 </head>
 <body>
 
-    <div class="page">
+    <div class="checkout-container">
 
-        <div class="story">
-            <a href="{{ route('dashboard') }}" class="back-link">← Back to store</a>
-            <div class="eyebrow">Checkout — {{ $product->subtitle }}</div>
-            <h1>{{ $product->name }}</h1>
-            <p class="lede">{{ $product->description }}</p>
+        <!-- Left: Product Summary -->
+        <div class="summary-section">
+            <div>
+                <a href="{{ route('dashboard') }}" class="back-link">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Back to Store
+                </a>
+
+                <span class="product-badge">{{ $product->subtitle }}</span>
+                <h1 class="product-title">{{ $product->name }}</h1>
+                <p class="product-desc">{{ $product->description }}</p>
+
+                <div class="price-breakdown">
+                    <div class="price-row">
+                        <span>Subtotal</span>
+                        <span id="subtotal-val">৳{{ number_format($product->price_bdt, 0) }}</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Tax / Fees</span>
+                        <span>৳0.00</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Total Due</span>
+                        <span class="total-amount" id="amount-display">৳{{ number_format($product->price_bdt, 0) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="trust-badges">
+                <div class="trust-item">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    Encrypted Payment
+                </div>
+                <div class="trust-item">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Instant Access
+                </div>
+            </div>
         </div>
 
-        <div class="receipt-wrap">
-            <form class="receipt" id="checkout-form" method="POST" action="{{ route('bkash.pay') }}">
+        <!-- Right: Payment Form -->
+        <div class="payment-section">
+            <form id="checkout-form" method="POST" action="{{ route('bkash.pay') }}">
                 @csrf
-                <div class="stamp">SANDBOX</div>
+
+                <div class="section-header">
+                    <h2>Payment Method</h2>
+                    <p>Select your preferred option to complete purchase.</p>
+                </div>
 
                 @if (session('error'))
                     <div class="error-box">{{ session('error') }}</div>
                 @endif
 
-                <div class="receipt-head">
-                    <span class="label">ORDER RECEIPT</span>
-                    <span class="num">{{ auth()->user()->email }}</span>
+                <div class="user-chip">
+                    <span>Account</span>
+                    <span class="email">{{ auth()->user()->email }}</span>
                 </div>
 
-                <div class="line-item">
-                    <span class="desc">Item</span>
-                    <span class="val">{{ $product->name }}</span>
-                </div>
-                <div class="line-item">
-                    <span class="desc">Format</span>
-                    <span class="val">{{ $product->subtitle }}</span>
-                </div>
-                <div class="line-item">
-                    <span class="desc">Qty</span>
-                    <span class="val">1</span>
-                </div>
-
-                <hr class="rule">
-
-                <div class="total-row">
-                    <span class="t-label">Total</span>
-                    <span>
-                        <span class="t-amount" id="amount-display">৳{{ number_format($product->price_bdt, 0) }}</span>
-                        <span class="t-sub" id="amount-sub">BDT</span>
-                    </span>
-                </div>
-
-                <div class="pay-title">Pay with</div>
-                <div class="methods">
-                    <label class="method selected">
-                        <input type="radio" name="method" value="bkash" checked>
-                        <span class="swatch bkash"></span>
-                        <span class="m-name">bKash</span>
-                        <span class="m-note">Mobile banking</span>
+                <div class="methods-grid">
+                    <!-- bKash -->
+                    <label class="method-card selected">
+                        <input type="radio" class="method-radio" name="method" value="bkash" checked>
+                        <div class="method-logo logo-bkash">bKash</div>
+                        <div class="method-info">
+                            <div class="method-title">bKash Online</div>
+                            <div class="method-desc">Mobile Wallet / BDT</div>
+                        </div>
                     </label>
 
-                    <label class="method">
-                        <input type="radio" name="method" value="sslcommerz">
-                        <span class="swatch sslcommerz"></span>
-                        <span class="m-name">SSLCommerz</span>
-                        <span class="m-note">Card &amp; bank</span>
+                    <!-- SSLCommerz -->
+                    <label class="method-card">
+                        <input type="radio" class="method-radio" name="method" value="sslcommerz">
+                        <div class="method-logo logo-sslcommerz">SSL</div>
+                        <div class="method-info">
+                            <div class="method-title">SSLCommerz Gateway</div>
+                            <div class="method-desc">Cards, Net Banking, Wallets</div>
+                        </div>
                     </label>
 
-                    <label class="method">
-                        <input type="radio" name="method" value="paypal">
-                        <span class="swatch paypal"></span>
-                        <span class="m-name">PayPal</span>
-                        <span class="m-note">Card / balance</span>
+                    <!-- PayPal -->
+                    <label class="method-card">
+                        <input type="radio" class="method-radio" name="method" value="paypal">
+                        <div class="method-logo logo-paypal">PayPal</div>
+                        <div class="method-info">
+                            <div class="method-title">PayPal / Card</div>
+                            <div class="method-desc">International / USD</div>
+                        </div>
                     </label>
                 </div>
 
                 <input type="hidden" name="product_id" value="{{ $product->id }}">
 
-                <button type="submit" class="submit-btn">Continue to payment →</button>
+                <button type="submit" class="submit-btn" id="submit-btn">
+                    <span>Pay</span>
+                    <span id="btn-amount">৳{{ number_format($product->price_bdt, 0) }}</span>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
 
-                <div class="foot-note">Test transaction · no real money moves · receipt goes to {{ auth()->user()->email }}</div>
+                <div class="security-footer">
+                    🔒 Guaranteed safe & secure checkout environment.
+                </div>
             </form>
         </div>
 
@@ -386,23 +463,31 @@
 
         const form = document.getElementById('checkout-form');
         const amountDisplay = document.getElementById('amount-display');
-        const amountSub = document.getElementById('amount-sub');
-        const methods = document.querySelectorAll('.method');
+        const subtotalVal = document.getElementById('subtotal-val');
+        const btnAmount = document.getElementById('btn-amount');
+        const cards = document.querySelectorAll('.method-card');
 
-        methods.forEach((el) => {
-            el.addEventListener('click', () => {
-                methods.forEach((m) => m.classList.remove('selected'));
-                el.classList.add('selected');
+        cards.forEach((card) => {
+            card.addEventListener('click', () => {
+                // Handle active state toggle
+                cards.forEach((c) => c.classList.remove('selected'));
+                card.classList.add('selected');
 
-                const radio = el.querySelector('input[type="radio"]');
+                const radio = card.querySelector('input[type="radio"]');
+                radio.checked = true;
                 form.action = routes[radio.value];
 
+                // Update amounts and currency dynamically
                 if (radio.value === 'paypal') {
-                    amountDisplay.textContent = '$' + priceUsd.toFixed(2);
-                    amountSub.textContent = 'USD';
+                    const formattedUsd = '$' + priceUsd.toFixed(2);
+                    amountDisplay.textContent = formattedUsd;
+                    subtotalVal.textContent = formattedUsd;
+                    btnAmount.textContent = formattedUsd;
                 } else {
-                    amountDisplay.textContent = '৳' + priceBdt.toFixed(0);
-                    amountSub.textContent = 'BDT';
+                    const formattedBdt = '৳' + priceBdt.toFixed(0);
+                    amountDisplay.textContent = formattedBdt;
+                    subtotalVal.textContent = formattedBdt;
+                    btnAmount.textContent = formattedBdt;
                 }
             });
         });

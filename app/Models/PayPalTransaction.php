@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PayPalTransaction extends Model
 {
+    protected $table = 'paypal_transactions';
     protected $fillable = [
         'user_id',
         'product_id',

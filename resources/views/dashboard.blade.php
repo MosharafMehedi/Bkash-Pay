@@ -1,137 +1,215 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-bold text-xl text-white tracking-wide">
-            {{ __('mPay Store') }}
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Store') }}
         </h2>
     </x-slot>
 
-    <!-- Internal Styles for Product Cards -->
-    <style>
-        .store-bg {
-            background-color: #0b0f19;
-            background-image: 
-                radial-gradient(circle at 20% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
-            min-height: calc(100vh - 65px);
-        }
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=sora:400,600,700|inter:400,500,600" rel="stylesheet">
 
-        /* Product Card Glassmorphism */
-        .product-card {
-            background: rgba(17, 24, 39, 0.65);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    <style>
+        .neon-zone {
+            --bg-deep: #06050c;
+            --glass: rgba(255, 255, 255, 0.045);
+            --glass-border: rgba(255, 255, 255, 0.09);
+            --cyan: #29e7ff;
+            --violet: #a78bfa;
+            --pink: #ff5fb0;
+            --text-hi: #f1f0fb;
+            --text-mu: #9a94b8;
+
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-deep);
+            border-radius: 1.5rem;
+            padding: 2.25rem 2rem;
             position: relative;
             overflow: hidden;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.6);
         }
 
-        .product-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(6, 182, 212, 0.3);
-            box-shadow: 0 15px 30px -10px rgba(6, 182, 212, 0.15), 0 0 15px rgba(139, 92, 246, 0.1);
+        .neon-zone::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 12% 8%, rgba(167, 139, 250, 0.28), transparent 40%),
+                radial-gradient(circle at 88% 15%, rgba(41, 231, 255, 0.22), transparent 42%),
+                radial-gradient(circle at 50% 100%, rgba(255, 95, 176, 0.14), transparent 45%);
+            pointer-events: none;
         }
 
-        /* Subtitle Badge */
-        .subtitle-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.65rem;
-            border-radius: 50px;
-            font-size: 0.68rem;
+        .neon-zone::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+            background-size: 42px 42px;
+            mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+            pointer-events: none;
+        }
+
+        .neon-zone > * { position: relative; z-index: 1; }
+
+        .neon-eyebrow {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            color: var(--cyan);
+            margin-bottom: 0.4rem;
+        }
+
+        .neon-heading {
+            font-family: 'Sora', sans-serif;
             font-weight: 700;
-            text-transform: uppercase;
+            font-size: 1.6rem;
+            color: var(--text-hi);
+            margin-bottom: 1.75rem;
+        }
+
+        .glass-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-radius: 1.1rem;
+            padding: 1.4rem 1.5rem;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .stat-grid { grid-template-columns: 1fr; }
+        }
+
+        .stat-label {
+            font-size: 0.72rem;
             letter-spacing: 0.05em;
-            background: rgba(6, 182, 212, 0.1);
-            color: #06b6d4;
-            border: 1px solid rgba(6, 182, 212, 0.2);
+            color: var(--text-mu);
+            text-transform: uppercase;
+            margin-bottom: 0.6rem;
         }
 
-        /* Buy Button Glow */
-        .btn-buy-glow {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            background: linear-gradient(135deg, #06b6d4, #8b5cf6);
-            color: #ffffff;
+        .stat-value {
+            font-family: 'Sora', sans-serif;
             font-weight: 700;
-            font-size: 0.85rem;
-            padding: 0.55rem 1.1rem;
-            border-radius: 12px;
-            transition: all 0.25s ease;
-            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.25);
+            font-size: 1.9rem;
+            color: var(--text-hi);
         }
 
-        .btn-buy-glow:hover {
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
-            opacity: 0.95;
+        .stat-value .unit {
+            font-size: 1rem;
+            color: var(--text-mu);
+            font-weight: 400;
+            margin-left: 0.25rem;
         }
 
-        .btn-buy-glow svg {
-            transition: transform 0.2s ease;
+        .stat-card.cyan { box-shadow: inset 0 0 0 1px rgba(41, 231, 255, 0.18); }
+        .stat-card.violet { box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.18); }
+        .stat-card.pink { box-shadow: inset 0 0 0 1px rgba(255, 95, 176, 0.18); }
+
+        .stat-card.cyan .stat-value { color: var(--cyan); }
+        .stat-card.violet .stat-value { color: var(--violet); }
+        .stat-card.pink .stat-value { color: var(--pink); }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 1.25rem;
         }
 
-        .btn-buy-glow:hover svg {
-            transform: translateX(3px);
+        @media (max-width: 900px) {
+            .chart-grid { grid-template-columns: 1fr; }
+        }
+
+        .chart-card-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.95rem;
+            color: var(--text-hi);
+            margin-bottom: 1rem;
+        }
+
+        .success-badge {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            margin-top: 0.6rem;
+            font-size: 0.72rem;
+            color: var(--text-mu);
+        }
+
+        .success-badge b {
+            color: var(--cyan);
+            font-size: 0.95rem;
+            font-family: 'Sora', sans-serif;
         }
     </style>
 
-    <div class="store-bg py-10">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-12">
+        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
-            <!-- Page Header -->
-            <div class="mb-8 text-center sm:text-left">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-2">
-                    <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                    Sandbox Checkout Mode
+            {{-- Analytics zone --}}
+            <div class="neon-zone">
+                <div class="neon-eyebrow">OVERVIEW</div>
+                <div class="neon-heading">Payment analytics</div>
+
+                <div class="stat-grid">
+                    <div class="glass-card stat-card cyan">
+                        <div class="stat-label">Today's payment</div>
+                        <div class="stat-value">৳{{ number_format($todayTotal, 0) }}<span class="unit">BDT</span></div>
+                    </div>
+                    <div class="glass-card stat-card violet">
+                        <div class="stat-label">Last month's payment</div>
+                        <div class="stat-value">৳{{ number_format($lastMonthTotal, 0) }}<span class="unit">BDT</span></div>
+                    </div>
+                    <div class="glass-card stat-card pink">
+                        <div class="stat-label">Total payment</div>
+                        <div class="stat-value">৳{{ number_format($grandTotal, 0) }}<span class="unit">BDT</span></div>
+                        <div class="success-badge"><b>{{ $successRate }}%</b> success rate ({{ $totalAttempts }} attempts)</div>
+                    </div>
                 </div>
-                <h1 class="text-3xl font-extrabold text-white tracking-tight">Pick Something to Buy</h1>
-                <p class="text-gray-400 text-sm mt-1">Test payments securely — no real money moves.</p>
+
+                <div class="chart-grid">
+                    <div class="glass-card">
+                        <div class="chart-card-title">Last 10 days</div>
+                        <canvas id="dailyChart" height="160"></canvas>
+                    </div>
+                    <div class="glass-card">
+                        <div class="chart-card-title">By gateway</div>
+                        <canvas id="gatewayChart" height="160"></canvas>
+                    </div>
+                </div>
             </div>
 
-            <!-- Products Grid -->
+            {{-- Product grid --}}
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold text-gray-800">Pick something to buy</h1>
+                <p class="text-gray-500 text-sm mt-1">Sandbox checkout — no real money moves.</p>
+            </div>
+
             <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($products as $product)
-                    <div class="product-card p-6 flex flex-col justify-between">
-                        <div>
-                            <!-- Header / Subtitle Tag -->
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="subtitle-badge">
-                                    {{ $product->subtitle }}
-                                </span>
-                                <div class="w-2 h-2 rounded-full bg-slate-700"></div>
-                            </div>
+                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                        <div class="text-xs uppercase tracking-wide text-gray-400 mb-2">{{ $product->subtitle }}</div>
+                        <h3 class="font-semibold text-gray-800 text-lg mb-2">{{ $product->name }}</h3>
+                        <p class="text-sm text-gray-500 flex-1 mb-4">{{ $product->description }}</p>
 
-                            <!-- Title -->
-                            <h3 class="font-bold text-white text-xl mb-2 group-hover:text-cyan-400 transition">
-                                {{ $product->name }}
-                            </h3>
-
-                            <!-- Description -->
-                            <p class="text-sm text-gray-400 leading-relaxed mb-6">
-                                {{ $product->description }}
-                            </p>
-                        </div>
-
-                        <!-- Footer / Price & Action -->
-                        <div class="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
+                        <div class="flex items-center justify-between">
                             <div>
-                                <div class="text-2xl font-black text-white tracking-tight">
-                                    ৳{{ number_format($product->price_bdt, 0) }}
-                                </div>
-                                <div class="text-[0.72rem] text-slate-400 flex items-center gap-1 mt-0.5">
-                                    <span class="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-400 font-medium">${{ number_format($product->price_usd, 2) }}</span> 
-                                    <span>via PayPal</span>
-                                </div>
+                                <span class="text-lg font-bold text-gray-800">৳{{ number_format($product->price_bdt, 0) }}</span>
+                                <span class="text-xs text-gray-400 block">${{ number_format($product->price_usd, 2) }} via PayPal</span>
                             </div>
-
-                            <!-- Buy Button -->
-                            <a href="{{ route('checkout.show', $product) }}" class="btn-buy-glow group">
-                                <span>Buy</span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                                </svg>
+                            <a href="{{ route('checkout.show', $product) }}"
+                                class="bg-gray-900 hover:bg-gray-700 transition text-white text-sm font-semibold px-4 py-2 rounded-lg">
+                                Buy
                             </a>
                         </div>
                     </div>
@@ -140,4 +218,52 @@
 
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+        const dailyLabels = {!! json_encode($last10Days->pluck('label')) !!};
+        const dailyAmounts = {!! json_encode($last10Days->pluck('amount')) !!};
+
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'bar',
+            data: {
+                labels: dailyLabels,
+                datasets: [{
+                    data: dailyAmounts,
+                    backgroundColor: 'rgba(41, 231, 255, 0.55)',
+                    hoverBackgroundColor: 'rgba(41, 231, 255, 0.85)',
+                    borderRadius: 6,
+                    maxBarThickness: 28,
+                }],
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#9a94b8', font: { family: 'Inter' } }, grid: { display: false } },
+                    y: { ticks: { color: '#9a94b8', font: { family: 'Inter' } }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true },
+                },
+            },
+        });
+
+        const gatewayLabels = {!! json_encode(array_keys($gatewayTotals)) !!};
+        const gatewayAmounts = {!! json_encode(array_values($gatewayTotals)) !!};
+
+        new Chart(document.getElementById('gatewayChart'), {
+            type: 'doughnut',
+            data: {
+                labels: gatewayLabels,
+                datasets: [{
+                    data: gatewayAmounts,
+                    backgroundColor: ['#e2136e', '#1546a0', '#29e7ff'],
+                    borderColor: '#06050c',
+                    borderWidth: 3,
+                }],
+            },
+            options: {
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#9a94b8', font: { family: 'Inter' }, boxWidth: 10, padding: 14 } },
+                },
+            },
+        });
+    </script>
 </x-app-layout>

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class BkashTransaction extends Model
 {
+    protected $table = 'bkash_transactions';
     protected $fillable = [
         'user_id',
         'product_id',

@@ -4,40 +4,34 @@ namespace Database\Seeders;
 
 use App\Models\Product;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class ProductSeeder extends Seeder
 {
     public function run(): void
     {
         $products = [
-            [
-                'name'        => 'Full-Stack Laravel Handbook',
-                'slug'        => 'full-stack-laravel-handbook',
-                'subtitle'    => 'PDF + EPUB',
-                'description' => 'A practical field guide to shipping real Laravel applications — auth, jobs, and payments.',
-                'price_bdt'   => 990,
-                'price_usd'   => 9,
-            ],
-            [
-                'name'        => 'API Design Patterns',
-                'slug'        => 'api-design-patterns',
-                'subtitle'    => 'PDF',
-                'description' => 'Patterns for building REST and JSON APIs that age well.',
-                'price_bdt'   => 750,
-                'price_usd'   => 7,
-            ],
-            [
-                'name'        => 'Queues & Jobs Deep Dive',
-                'slug'        => 'queues-and-jobs-deep-dive',
-                'subtitle'    => 'PDF + Code samples',
-                'description' => 'Background processing, retries, and monitoring for Laravel apps.',
-                'price_bdt'   => 650,
-                'price_usd'   => 6,
-            ],
+            ['Starter Plan', 'For beginners', 'Basic access plan with core features.', 499, 4.99, 100, 4.5, 42],
+            ['Pro Plan',     'Best value',    'Everything in Starter + priority support.', 1499, 13.99, 50, 4.8, 128],
+            ['Business Plan','For teams',     'Unlimited users, analytics & API access.', 4999, 44.99, 25, 4.9, 76],
         ];
 
-        foreach ($products as $product) {
-            Product::updateOrCreate(['slug' => $product['slug']], $product);
+        foreach ($products as [$name, $sub, $desc, $bdt, $usd, $stock, $rating, $reviews]) {
+            Product::create([
+                'name'          => $name,
+                'slug'          => Str::slug($name),
+                'subtitle'      => $sub,
+                'description'   => $desc,
+                'price_bdt'     => $bdt,
+                'price_usd'     => $usd,
+                'quantity'      => $stock,
+                'stock'         => $stock,
+                'rating'        => $rating,
+                'review_count'  => $reviews,
+                'category'      => 'Plans',
+                'is_active'     => true,
+                'is_featured'   => $name === 'Pro Plan',
+            ]);
         }
     }
 }

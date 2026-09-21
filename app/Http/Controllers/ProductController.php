@@ -13,7 +13,7 @@ class ProductController extends Controller
     {
         $products = Product::orderBy('id')->get();
 
-        return view('dashboard', compact('products'));
+        return view('products.index', compact('products'));
     }
 
     /**

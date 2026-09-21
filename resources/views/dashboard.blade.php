@@ -1,9 +1,5 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Store') }}
-        </h2>
-    </x-slot>
+    @section('title', 'Dashboard')
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=sora:400,600,700|inter:400,500,600" rel="stylesheet">
@@ -25,7 +21,6 @@
             padding: 2.25rem 2rem;
             position: relative;
             overflow: hidden;
-            margin-bottom: 2.5rem;
             box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.6);
         }
 
@@ -153,70 +148,41 @@
         }
     </style>
 
-    <div class="py-12">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+    <div class="max-w-6xl mx-auto">
 
-            {{-- Analytics zone --}}
-            <div class="neon-zone">
-                <div class="neon-eyebrow">OVERVIEW</div>
-                <div class="neon-heading">Payment analytics</div>
+        {{-- Analytics zone --}}
+        <div class="neon-zone">
+            <div class="neon-eyebrow">OVERVIEW</div>
+            <div class="neon-heading">Payment analytics</div>
 
-                <div class="stat-grid">
-                    <div class="glass-card stat-card cyan">
-                        <div class="stat-label">Today's payment</div>
-                        <div class="stat-value">৳{{ number_format($todayTotal, 0) }}<span class="unit">BDT</span></div>
-                    </div>
-                    <div class="glass-card stat-card violet">
-                        <div class="stat-label">Last month's payment</div>
-                        <div class="stat-value">৳{{ number_format($lastMonthTotal, 0) }}<span class="unit">BDT</span></div>
-                    </div>
-                    <div class="glass-card stat-card pink">
-                        <div class="stat-label">Total payment</div>
-                        <div class="stat-value">৳{{ number_format($grandTotal, 0) }}<span class="unit">BDT</span></div>
-                        <div class="success-badge"><b>{{ $successRate }}%</b> success rate ({{ $totalAttempts }} attempts)</div>
-                    </div>
+            <div class="stat-grid">
+                <div class="glass-card stat-card cyan">
+                    <div class="stat-label">Today's payment</div>
+                    <div class="stat-value">৳{{ number_format($todayTotal, 0) }}<span class="unit">BDT</span></div>
                 </div>
-
-                <div class="chart-grid">
-                    <div class="glass-card">
-                        <div class="chart-card-title">Last 10 days</div>
-                        <canvas id="dailyChart" height="160"></canvas>
-                    </div>
-                    <div class="glass-card">
-                        <div class="chart-card-title">By gateway</div>
-                        <canvas id="gatewayChart" height="160"></canvas>
-                    </div>
+                <div class="glass-card stat-card violet">
+                    <div class="stat-label">Last month's payment</div>
+                    <div class="stat-value">৳{{ number_format($lastMonthTotal, 0) }}<span class="unit">BDT</span></div>
+                </div>
+                <div class="glass-card stat-card pink">
+                    <div class="stat-label">Total payment</div>
+                    <div class="stat-value">৳{{ number_format($grandTotal, 0) }}<span class="unit">BDT</span></div>
+                    <div class="success-badge"><b>{{ $successRate }}%</b> success rate ({{ $totalAttempts }} attempts)</div>
                 </div>
             </div>
 
-            {{-- Product grid --}}
-            <div class="mb-8">
-                <h1 class="text-2xl font-bold text-gray-800">Pick something to buy</h1>
-                <p class="text-gray-500 text-sm mt-1">Sandbox checkout — no real money moves.</p>
+            <div class="chart-grid">
+                <div class="glass-card">
+                    <div class="chart-card-title">Last 10 days</div>
+                    <canvas id="dailyChart" height="160"></canvas>
+                </div>
+                <div class="glass-card">
+                    <div class="chart-card-title">By gateway</div>
+                    <canvas id="gatewayChart" height="160"></canvas>
+                </div>
             </div>
-
-            <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($products as $product)
-                    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
-                        <div class="text-xs uppercase tracking-wide text-gray-400 mb-2">{{ $product->subtitle }}</div>
-                        <h3 class="font-semibold text-gray-800 text-lg mb-2">{{ $product->name }}</h3>
-                        <p class="text-sm text-gray-500 flex-1 mb-4">{{ $product->description }}</p>
-
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <span class="text-lg font-bold text-gray-800">৳{{ number_format($product->price_bdt, 0) }}</span>
-                                <span class="text-xs text-gray-400 block">${{ number_format($product->price_usd, 2) }} via PayPal</span>
-                            </div>
-                            <a href="{{ route('checkout.show', $product) }}"
-                                class="bg-gray-900 hover:bg-gray-700 transition text-white text-sm font-semibold px-4 py-2 rounded-lg">
-                                Buy
-                            </a>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
         </div>
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>

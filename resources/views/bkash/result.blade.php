@@ -47,7 +47,7 @@
                 </div>
             @endif
 
-            <a href="{{ route('bkash.index') }}"
+            <a href="{{ route('dashboard') }}"
                 class="block w-full bg-pink-600 hover:bg-pink-700 transition text-white font-semibold py-3 rounded-xl">
                 Back to Home
             </a>

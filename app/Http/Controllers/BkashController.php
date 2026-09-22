@@ -7,6 +7,7 @@ use App\Models\BkashTransaction;
 use App\Models\Product;
 use App\Services\BkashService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class BkashController extends Controller
@@ -15,9 +16,6 @@ class BkashController extends Controller
     {
     }
 
-    /**
-     * Transaction history for the logged-in user (optional debug page).
-     */
     public function index()
     {
         $transactions = BkashTransaction::where('user_id', auth()->id())->latest()->take(20)->get();
@@ -25,11 +23,6 @@ class BkashController extends Controller
         return view('bkash.index', compact('transactions'));
     }
 
-    /**
-     * Create the payment for a specific product and redirect the user
-     * to bKash's payment page. The amount comes from the product, not
-     * from user input, and the email comes from the logged-in account.
-     */
     public function pay(Request $request)
     {
         $request->validate([
@@ -39,22 +32,25 @@ class BkashController extends Controller
         $product = Product::findOrFail($request->product_id);
         $user    = $request->user();
 
+        if ($product->stock <= 0) {
+            return back()->with('error', 'Sorry, this product is out of stock.');
+        }
+
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
-        $result = $this->bkash->createPayment((float) $product->price_bdt, $invoiceNumber);
+        $result = $this->bkash->createPayment((float) $product->final_price_bdt, $invoiceNumber);
 
         if (isset($result['error']) || !isset($result['bkashURL'])) {
             return back()->with('error', 'Payment could not be created: ' . json_encode($result));
         }
 
-        // Save a "pending" record now, we'll update it once the callback fires
         BkashTransaction::create([
             'user_id'        => $user->id,
             'product_id'     => $product->id,
             'payment_id'     => $result['paymentID'],
             'invoice_number' => $invoiceNumber,
             'customer_email' => $user->email,
-            'amount'         => $product->price_bdt,
+            'amount'         => $product->final_price_bdt,
             'currency'       => 'BDT',
             'status'         => 'pending',
             'raw_response'   => $result,
@@ -63,14 +59,10 @@ class BkashController extends Controller
         return redirect()->away($result['bkashURL']);
     }
 
-    /**
-     * bKash redirects the user back to this URL after they approve
-     * (or cancel) the payment on their side.
-     */
     public function callback(Request $request)
     {
         $paymentId = $request->query('paymentID');
-        $status    = $request->query('status'); // success | failure | cancel
+        $status    = $request->query('status');
 
         $transaction = BkashTransaction::where('payment_id', $paymentId)->first();
 
@@ -91,6 +83,16 @@ class BkashController extends Controller
         $result = $this->bkash->executePayment($paymentId);
 
         $success = ($result['transactionStatus'] ?? null) === 'Completed';
+
+        // Decrement stock ONLY on success (and once)
+        if ($success && $transaction && $transaction->status !== 'success') {
+            DB::transaction(function () use ($transaction) {
+                $product = Product::find($transaction->product_id);
+                if ($product) {
+                    $product->decrementStock();
+                }
+            });
+        }
 
         $transaction?->update([
             'status'             => $success ? 'success' : 'failed',
@@ -113,9 +115,6 @@ class BkashController extends Controller
         ]);
     }
 
-    /**
-     * Optional: manually check a transaction's status by paymentID.
-     */
     public function status(string $paymentId)
     {
         $result = $this->bkash->queryPayment($paymentId);

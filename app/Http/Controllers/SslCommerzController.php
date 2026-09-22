@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\SslCommerzTransaction;
 use App\Services\SslCommerzService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class SslCommerzController extends Controller
@@ -22,10 +23,6 @@ class SslCommerzController extends Controller
         return view('sslcommerz.index', compact('transactions'));
     }
 
-    /**
-     * Initiate the payment session for a specific product and redirect
-     * the user to the SSLCommerz gateway page.
-     */
     public function pay(Request $request)
     {
         $request->validate([
@@ -35,10 +32,14 @@ class SslCommerzController extends Controller
         $product = Product::findOrFail($request->product_id);
         $user    = $request->user();
 
-        $tranId = 'TRX-' . strtoupper(uniqid());
+        if ($product->stock <= 0) {
+            return back()->with('error', 'Sorry, this product is out of stock.');
+        }
+
+        $tranId        = 'TRX-' . strtoupper(uniqid());
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
-        $result = $this->sslcommerz->initiatePayment((float) $product->price_bdt, $tranId, [
+        $result = $this->sslcommerz->initiatePayment((float) $product->final_price_bdt, $tranId, [
             'name'  => $user->name,
             'email' => $user->email,
         ]);
@@ -53,7 +54,7 @@ class SslCommerzController extends Controller
             'tran_id'        => $tranId,
             'invoice_number' => $invoiceNumber,
             'customer_email' => $user->email,
-            'amount'         => $product->price_bdt,
+            'amount'         => $product->final_price_bdt,
             'currency'       => config('sslcommerz.currency'),
             'status'         => 'pending',
             'raw_response'   => $result,
@@ -62,10 +63,6 @@ class SslCommerzController extends Controller
         return redirect()->away($result['GatewayPageURL']);
     }
 
-    /**
-     * SSLCommerz POSTs here after a successful payment. We must
-     * re-validate with the Order Validation API before trusting it.
-     */
     public function success(Request $request)
     {
         $tranId = $request->input('tran_id');
@@ -73,9 +70,17 @@ class SslCommerzController extends Controller
 
         $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
 
-        $result = $this->sslcommerz->validateTransaction($valId);
-
+        $result  = $this->sslcommerz->validateTransaction($valId);
         $success = in_array($result['status'] ?? null, ['VALID', 'VALIDATED']);
+
+        if ($success && $transaction && $transaction->status !== 'success') {
+            DB::transaction(function () use ($transaction) {
+                $product = Product::find($transaction->product_id);
+                if ($product) {
+                    $product->decrementStock();
+                }
+            });
+        }
 
         $transaction?->update([
             'status'         => $success ? 'success' : 'failed',
@@ -99,12 +104,9 @@ class SslCommerzController extends Controller
         ]);
     }
 
-    /**
-     * SSLCommerz POSTs here when a payment fails.
-     */
     public function fail(Request $request)
     {
-        $tranId = $request->input('tran_id');
+        $tranId      = $request->input('tran_id');
         $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
 
         $transaction?->update([
@@ -120,12 +122,9 @@ class SslCommerzController extends Controller
         ]);
     }
 
-    /**
-     * SSLCommerz POSTs here when the buyer cancels the payment.
-     */
     public function cancel(Request $request)
     {
-        $tranId = $request->input('tran_id');
+        $tranId      = $request->input('tran_id');
         $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
 
         $transaction?->update([
@@ -141,11 +140,6 @@ class SslCommerzController extends Controller
         ]);
     }
 
-    /**
-     * Optional: SSLCommerz can also POST an async IPN (Instant Payment
-     * Notification) here — useful when the browser redirect doesn't
-     * fire (e.g. user closes the tab). Re-validate before trusting it.
-     */
     public function ipn(Request $request)
     {
         $tranId = $request->input('tran_id');
@@ -153,9 +147,17 @@ class SslCommerzController extends Controller
 
         $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
 
-        $result = $this->sslcommerz->validateTransaction($valId);
-
+        $result  = $this->sslcommerz->validateTransaction($valId);
         $success = in_array($result['status'] ?? null, ['VALID', 'VALIDATED']);
+
+        if ($success && $transaction && $transaction->status !== 'success') {
+            DB::transaction(function () use ($transaction) {
+                $product = Product::find($transaction->product_id);
+                if ($product) {
+                    $product->decrementStock();
+                }
+            });
+        }
 
         $transaction?->update([
             'status'         => $success ? 'success' : 'failed',

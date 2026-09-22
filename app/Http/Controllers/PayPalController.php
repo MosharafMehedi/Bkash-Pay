@@ -7,6 +7,7 @@ use App\Models\PayPalTransaction;
 use App\Models\Product;
 use App\Services\PayPalService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class PayPalController extends Controller
@@ -22,10 +23,6 @@ class PayPalController extends Controller
         return view('paypal.index', compact('transactions'));
     }
 
-    /**
-     * Create the order for a specific product and redirect the user to
-     * PayPal's approval page.
-     */
     public function pay(Request $request)
     {
         $request->validate([
@@ -34,6 +31,10 @@ class PayPalController extends Controller
 
         $product = Product::findOrFail($request->product_id);
         $user    = $request->user();
+
+        if ($product->stock <= 0) {
+            return back()->with('error', 'Sorry, this product is out of stock.');
+        }
 
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
@@ -61,12 +62,9 @@ class PayPalController extends Controller
         return redirect()->away($approveUrl);
     }
 
-    /**
-     * PayPal redirects here after the buyer approves the order.
-     */
     public function callback(Request $request)
     {
-        $orderId = $request->query('token'); // PayPal sends the order id as "token"
+        $orderId = $request->query('token');
 
         $transaction = PayPalTransaction::where('order_id', $orderId)->first();
 
@@ -79,11 +77,19 @@ class PayPalController extends Controller
             ]);
         }
 
-        $result = $this->paypal->captureOrder($orderId);
-
+        $result  = $this->paypal->captureOrder($orderId);
         $success = ($result['status'] ?? null) === 'COMPLETED';
-
         $capture = $result['purchase_units'][0]['payments']['captures'][0] ?? null;
+
+        // Decrement stock only on success (and once)
+        if ($success && $transaction && $transaction->status !== 'success') {
+            DB::transaction(function () use ($transaction) {
+                $product = Product::find($transaction->product_id);
+                if ($product) {
+                    $product->decrementStock();
+                }
+            });
+        }
 
         $transaction?->update([
             'status'        => $success ? 'success' : 'failed',
@@ -106,13 +112,9 @@ class PayPalController extends Controller
         ]);
     }
 
-    /**
-     * Buyer cancelled on PayPal's side.
-     */
     public function cancel(Request $request)
     {
-        $orderId = $request->query('token');
-
+        $orderId     = $request->query('token');
         $transaction = PayPalTransaction::where('order_id', $orderId)->first();
 
         $transaction?->update(['status' => 'cancelled']);

@@ -6,21 +6,27 @@ use App\Models\Product;
 
 class ProductController extends Controller
 {
-    /**
-     * Product grid shown on the dashboard.
-     */
     public function index()
     {
-        $products = Product::orderBy('id')->get();
+        $products = Product::active()
+            ->orderBy('id')
+            ->get();
 
         return view('products.index', compact('products'));
     }
 
-    /**
-     * Checkout page for a single product — payment method selector.
-     */
     public function checkout(Product $product)
     {
+        if (! $product->is_active) {
+            return redirect()->route('products.index')
+                ->with('error', 'This product is not available.');
+        }
+
+        if ($product->stock <= 0) {
+            return redirect()->route('products.index')
+                ->with('error', 'Sorry, this product is out of stock.');
+        }
+
         return view('checkout.show', compact('product'));
     }
 }

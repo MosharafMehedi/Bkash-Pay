@@ -20,11 +20,14 @@ class BkashTransaction extends Model
         'transaction_status',
         'customer_msisdn',
         'raw_response',
+        'discount_amount',
+        'coupon_id',
     ];
 
     protected $casts = [
         'raw_response' => 'array',
         'amount'       => 'decimal:2',
+        'discount_amount' => 'decimal:2',
     ];
 
     public function user()
@@ -35,5 +38,9 @@ class BkashTransaction extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 }

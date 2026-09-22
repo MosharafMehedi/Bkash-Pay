@@ -6,27 +6,30 @@ use App\Mail\PaymentReceiptMail;
 use App\Models\BkashTransaction;
 use App\Models\Product;
 use App\Services\BkashService;
+use App\Services\CheckoutService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class BkashController extends Controller
 {
-    public function __construct(protected BkashService $bkash)
-    {
+    public function __construct(
+        protected BkashService $bkash,
+        protected CheckoutService $checkout,
+    ) {
     }
 
     public function index()
     {
         $transactions = BkashTransaction::where('user_id', auth()->id())->latest()->take(20)->get();
-
         return view('bkash.index', compact('transactions'));
     }
 
     public function pay(Request $request)
     {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
+            'product_id'  => 'required|exists:products,id',
+            'coupon_code' => 'nullable|string|max:50',
         ]);
 
         $product = Product::findOrFail($request->product_id);
@@ -36,24 +39,48 @@ class BkashController extends Controller
             return back()->with('error', 'Sorry, this product is out of stock.');
         }
 
-        $invoiceNumber = 'INV-' . strtoupper(uniqid());
+        $summary = $this->checkout->resolve($user, $product, $request->input('coupon_code'));
 
-        $result = $this->bkash->createPayment((float) $product->final_price_bdt, $invoiceNumber);
+        if ($summary['coupon_error']) {
+            return back()->with('error', $summary['coupon_error']);
+        }
+
+        // Fully paid by wallet
+        if ($summary['payable_bdt'] <= 0) {
+            $orderRef = 'INV-' . strtoupper(uniqid());
+            try {
+                $this->checkout->settle(
+                    $user, $product, $summary['coupon'],
+                    $summary['discount_bdt'], $summary['balance_used_bdt'], 0,
+                    $orderRef
+                );
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Could not complete order: ' . $e->getMessage());
+            }
+            return redirect()->route('products.index')
+                ->with('success', 'Order paid with wallet balance! Ref ' . $orderRef);
+        }
+
+        $invoiceNumber = 'INV-' . strtoupper(uniqid());
+        $result = $this->bkash->createPayment((float) $summary['payable_bdt'], $invoiceNumber);
 
         if (isset($result['error']) || !isset($result['bkashURL'])) {
             return back()->with('error', 'Payment could not be created: ' . json_encode($result));
         }
 
+        // ✅ Save coupon_id + discount_amount in DB
         BkashTransaction::create([
-            'user_id'        => $user->id,
-            'product_id'     => $product->id,
-            'payment_id'     => $result['paymentID'],
-            'invoice_number' => $invoiceNumber,
-            'customer_email' => $user->email,
-            'amount'         => $product->final_price_bdt,
-            'currency'       => 'BDT',
-            'status'         => 'pending',
-            'raw_response'   => $result,
+            'user_id'         => $user->id,
+            'product_id'      => $product->id,
+            'coupon_id'       => $summary['coupon']?->id,
+            'payment_id'      => $result['paymentID'],
+            'invoice_number'  => $invoiceNumber,
+            'customer_email'  => $user->email,
+            'amount'          => $summary['payable_bdt'],
+            'discount_amount' => $summary['discount_bdt'],
+            'currency'        => 'BDT',
+            'status'          => 'pending',
+            'raw_response'    => $result,
         ]);
 
         return redirect()->away($result['bkashURL']);
@@ -71,7 +98,6 @@ class BkashController extends Controller
                 'status'             => $status === 'cancel' ? 'cancelled' : 'failed',
                 'transaction_status' => $status,
             ]);
-
             return view('bkash.result', [
                 'success'     => false,
                 'message'     => 'Payment was cancelled or failed.',
@@ -80,18 +106,24 @@ class BkashController extends Controller
             ]);
         }
 
-        $result = $this->bkash->executePayment($paymentId);
-
+        $result  = $this->bkash->executePayment($paymentId);
         $success = ($result['transactionStatus'] ?? null) === 'Completed';
 
-        // Decrement stock ONLY on success (and once)
+        // ✅ Settle using DB columns (not session)
         if ($success && $transaction && $transaction->status !== 'success') {
-            DB::transaction(function () use ($transaction) {
-                $product = Product::find($transaction->product_id);
-                if ($product) {
-                    $product->decrementStock();
-                }
-            });
+            try {
+                $this->checkout->settle(
+                    $transaction->user,
+                    $transaction->product,
+                    $transaction->coupon,                       // DB relation
+                    (float) $transaction->discount_amount,      // DB value
+                    0,
+                    0,
+                    $transaction->invoice_number
+                );
+            } catch (\Throwable $e) {
+                Log::error('bKash settle failed: ' . $e->getMessage());
+            }
         }
 
         $transaction?->update([
@@ -117,8 +149,6 @@ class BkashController extends Controller
 
     public function status(string $paymentId)
     {
-        $result = $this->bkash->queryPayment($paymentId);
-
-        return response()->json($result);
+        return response()->json($this->bkash->queryPayment($paymentId));
     }
 }

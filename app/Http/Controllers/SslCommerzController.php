@@ -5,28 +5,31 @@ namespace App\Http\Controllers;
 use App\Mail\PaymentReceiptMail;
 use App\Models\Product;
 use App\Models\SslCommerzTransaction;
+use App\Services\CheckoutService;
 use App\Services\SslCommerzService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class SslCommerzController extends Controller
 {
-    public function __construct(protected SslCommerzService $sslcommerz)
-    {
+    public function __construct(
+        protected SslCommerzService $sslcommerz,
+        protected CheckoutService $checkout,
+    ) {
     }
 
     public function index()
     {
         $transactions = SslCommerzTransaction::where('user_id', auth()->id())->latest()->take(20)->get();
-
         return view('sslcommerz.index', compact('transactions'));
     }
 
     public function pay(Request $request)
     {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
+            'product_id'  => 'required|exists:products,id',
+            'coupon_code' => 'nullable|string|max:50',
         ]);
 
         $product = Product::findOrFail($request->product_id);
@@ -36,10 +39,31 @@ class SslCommerzController extends Controller
             return back()->with('error', 'Sorry, this product is out of stock.');
         }
 
+        $summary = $this->checkout->resolve($user, $product, $request->input('coupon_code'));
+
+        if ($summary['coupon_error']) {
+            return back()->with('error', $summary['coupon_error']);
+        }
+
+        if ($summary['payable_bdt'] <= 0) {
+            $orderRef = 'INV-' . strtoupper(uniqid());
+            try {
+                $this->checkout->settle(
+                    $user, $product, $summary['coupon'],
+                    $summary['discount_bdt'], $summary['balance_used_bdt'], 0,
+                    $orderRef
+                );
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Could not complete order: ' . $e->getMessage());
+            }
+            return redirect()->route('products.index')
+                ->with('success', 'Order paid with wallet balance! Ref ' . $orderRef);
+        }
+
         $tranId        = 'TRX-' . strtoupper(uniqid());
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
 
-        $result = $this->sslcommerz->initiatePayment((float) $product->final_price_bdt, $tranId, [
+        $result = $this->sslcommerz->initiatePayment((float) $summary['payable_bdt'], $tranId, [
             'name'  => $user->name,
             'email' => $user->email,
         ]);
@@ -48,16 +72,19 @@ class SslCommerzController extends Controller
             return back()->with('error', 'Payment could not be initiated: ' . json_encode($result));
         }
 
+        // ✅ Save coupon_id + discount_amount in DB
         SslCommerzTransaction::create([
-            'user_id'        => $user->id,
-            'product_id'     => $product->id,
-            'tran_id'        => $tranId,
-            'invoice_number' => $invoiceNumber,
-            'customer_email' => $user->email,
-            'amount'         => $product->final_price_bdt,
-            'currency'       => config('sslcommerz.currency'),
-            'status'         => 'pending',
-            'raw_response'   => $result,
+            'user_id'         => $user->id,
+            'product_id'      => $product->id,
+            'coupon_id'       => $summary['coupon']?->id,
+            'tran_id'         => $tranId,
+            'invoice_number'  => $invoiceNumber,
+            'customer_email'  => $user->email,
+            'amount'          => $summary['payable_bdt'],
+            'discount_amount' => $summary['discount_bdt'],
+            'currency'        => config('sslcommerz.currency'),
+            'status'          => 'pending',
+            'raw_response'    => $result,
         ]);
 
         return redirect()->away($result['GatewayPageURL']);
@@ -69,17 +96,24 @@ class SslCommerzController extends Controller
         $valId  = $request->input('val_id');
 
         $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
+        $result      = $this->sslcommerz->validateTransaction($valId);
+        $success     = in_array($result['status'] ?? null, ['VALID', 'VALIDATED']);
 
-        $result  = $this->sslcommerz->validateTransaction($valId);
-        $success = in_array($result['status'] ?? null, ['VALID', 'VALIDATED']);
-
+        // ✅ Settle using DB columns
         if ($success && $transaction && $transaction->status !== 'success') {
-            DB::transaction(function () use ($transaction) {
-                $product = Product::find($transaction->product_id);
-                if ($product) {
-                    $product->decrementStock();
-                }
-            });
+            try {
+                $this->checkout->settle(
+                    $transaction->user,
+                    $transaction->product,
+                    $transaction->coupon,
+                    (float) $transaction->discount_amount,
+                    0,
+                    0,
+                    $transaction->invoice_number
+                );
+            } catch (\Throwable $e) {
+                Log::error('SSL settle failed: ' . $e->getMessage());
+            }
         }
 
         $transaction?->update([
@@ -106,13 +140,8 @@ class SslCommerzController extends Controller
 
     public function fail(Request $request)
     {
-        $tranId      = $request->input('tran_id');
-        $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
-
-        $transaction?->update([
-            'status'       => 'failed',
-            'raw_response' => $request->all(),
-        ]);
+        $transaction = SslCommerzTransaction::where('tran_id', $request->input('tran_id'))->first();
+        $transaction?->update(['status' => 'failed', 'raw_response' => $request->all()]);
 
         return view('sslcommerz.result', [
             'success'     => false,
@@ -124,13 +153,8 @@ class SslCommerzController extends Controller
 
     public function cancel(Request $request)
     {
-        $tranId      = $request->input('tran_id');
-        $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
-
-        $transaction?->update([
-            'status'       => 'cancelled',
-            'raw_response' => $request->all(),
-        ]);
+        $transaction = SslCommerzTransaction::where('tran_id', $request->input('tran_id'))->first();
+        $transaction?->update(['status' => 'cancelled', 'raw_response' => $request->all()]);
 
         return view('sslcommerz.result', [
             'success'     => false,
@@ -146,17 +170,24 @@ class SslCommerzController extends Controller
         $valId  = $request->input('val_id');
 
         $transaction = SslCommerzTransaction::where('tran_id', $tranId)->first();
+        $result      = $this->sslcommerz->validateTransaction($valId);
+        $success     = in_array($result['status'] ?? null, ['VALID', 'VALIDATED']);
 
-        $result  = $this->sslcommerz->validateTransaction($valId);
-        $success = in_array($result['status'] ?? null, ['VALID', 'VALIDATED']);
-
+        // ✅ Settle using DB columns
         if ($success && $transaction && $transaction->status !== 'success') {
-            DB::transaction(function () use ($transaction) {
-                $product = Product::find($transaction->product_id);
-                if ($product) {
-                    $product->decrementStock();
-                }
-            });
+            try {
+                $this->checkout->settle(
+                    $transaction->user,
+                    $transaction->product,
+                    $transaction->coupon,
+                    (float) $transaction->discount_amount,
+                    0,
+                    0,
+                    $transaction->invoice_number
+                );
+            } catch (\Throwable $e) {
+                Log::error('SSL IPN settle failed: ' . $e->getMessage());
+            }
         }
 
         $transaction?->update([

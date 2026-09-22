@@ -3,15 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\CheckoutService;
 
 class ProductController extends Controller
 {
+    public function __construct(protected CheckoutService $checkout)
+    {
+    }
+
     public function index()
     {
-        $products = Product::active()
-            ->orderBy('id')
-            ->get();
-
+        $products = Product::active()->orderBy('id')->get();
         return view('products.index', compact('products'));
     }
 
@@ -27,6 +29,9 @@ class ProductController extends Controller
                 ->with('error', 'Sorry, this product is out of stock.');
         }
 
-        return view('checkout.show', compact('product'));
+        // Send initial summary (subtotal / balance / payable) to the view
+        $summary = $this->checkout->resolve(auth()->user(), $product);
+
+        return view('checkout.show', compact('product', 'summary'));
     }
 }

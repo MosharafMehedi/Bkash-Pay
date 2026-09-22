@@ -7,14 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class PayPalTransaction extends Model
 {
     protected $table = 'paypal_transactions';
+
     protected $fillable = [
         'user_id',
         'product_id',
+        'coupon_id',
         'order_id',
         'capture_id',
         'invoice_number',
         'customer_email',
         'amount',
+        'discount_amount',
         'currency',
         'status',
         'paypal_status',
@@ -23,17 +26,12 @@ class PayPalTransaction extends Model
     ];
 
     protected $casts = [
-        'raw_response' => 'array',
-        'amount'       => 'decimal:2',
+        'raw_response'    => 'array',
+        'amount'          => 'decimal:2',
+        'discount_amount' => 'decimal:2',
     ];
 
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function product()
-    {
-        return $this->belongsTo(Product::class);
-    }
+    public function user()    { return $this->belongsTo(User::class); }
+    public function product() { return $this->belongsTo(Product::class); }
+    public function coupon()  { return $this->belongsTo(Coupon::class); }
 }

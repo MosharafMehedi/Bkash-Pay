@@ -74,4 +74,5 @@ class Coupon extends Model
         $used = $this->usages()->where('user_id', $userId)->count();
         return $used >= $this->per_user_limit;
     }
+    
 }

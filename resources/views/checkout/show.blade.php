@@ -2,7 +2,7 @@
     @section('title', 'Checkout — ' . $product->name)
 
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=sora:400,600,700|inter:400,500,600" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=sora:400,600,700|inter:400,500,600|jetbrains-mono:400,700" rel="stylesheet">
 
     <style>
         .co-page {
@@ -50,7 +50,7 @@
             padding: 1.75rem;
         }
 
-        /* LEFT — summary */
+        /* ── LEFT — summary ── */
         .co-summary-media {
             width: 100%;
             aspect-ratio: 16 / 10;
@@ -124,6 +124,27 @@
             font-size: 1.15rem;
             color: var(--cyan);
         }
+        .co-price-row.discount { color: #6ee7b7; }
+        .co-price-row.discount .co-discount {
+            font-weight: 700;
+            color: #6ee7b7;
+        }
+        .co-coupon-tag {
+            color: var(--cyan);
+            font-weight: 600;
+            font-size: 0.72rem;
+            margin-left: 0.35rem;
+        }
+        .co-remove-coupon {
+            background: none;
+            border: none;
+            color: #f87171;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-left: 0.5rem;
+            text-decoration: underline;
+            padding: 0;
+        }
 
         .co-trust {
             display: flex;
@@ -136,7 +157,80 @@
         .co-trust-item { display: inline-flex; align-items: center; gap: 0.35rem; }
         .co-trust-item svg { width: 14px; height: 14px; color: var(--cyan); }
 
-        /* RIGHT — payment */
+        /* ── Coupon box ── */
+        .co-coupon {
+            margin-bottom: 1.15rem;
+        }
+        .co-coupon-label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-mu);
+            margin-bottom: 0.5rem;
+        }
+        .co-coupon-label svg { width: 14px; height: 14px; color: var(--cyan); }
+
+        .co-coupon-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .co-coupon-row input {
+            flex: 1;
+            padding: 0.7rem 0.9rem;
+            border-radius: 0.65rem;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--glass-border);
+            color: var(--text-hi);
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .co-coupon-row input::placeholder {
+            color: var(--text-mu);
+            letter-spacing: 0;
+            text-transform: none;
+            font-family: 'Inter', sans-serif;
+        }
+        .co-coupon-row input:focus { border-color: rgba(41,231,255,0.5); }
+        .co-coupon-row input:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .co-coupon-row button {
+            padding: 0.7rem 1.15rem;
+            border-radius: 0.65rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #06050c;
+            background: linear-gradient(135deg, var(--cyan), var(--violet));
+            border: none;
+            cursor: pointer;
+            transition: filter 0.15s, transform 0.15s;
+            white-space: nowrap;
+        }
+        .co-coupon-row button:hover:not(:disabled) { filter: brightness(1.08); }
+        .co-coupon-row button:disabled { opacity: 0.6; cursor: wait; }
+
+        .co-coupon-msg {
+            margin-top: 0.5rem;
+            font-size: 0.78rem;
+            min-height: 1em;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .co-coupon-msg.ok    { color: #6ee7b7; }
+        .co-coupon-msg.error { color: #fca5a5; }
+        .co-coupon-msg.info  { color: var(--cyan); }
+        .co-coupon-msg svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+        /* ── RIGHT — payment ── */
         .co-section-head { margin-bottom: 1.25rem; }
         .co-section-head h2 {
             font-family: 'Sora', sans-serif;
@@ -296,6 +390,12 @@
             color: #6ee7b7;
             font-size: 0.82rem;
         }
+
+        /* Coupon box shadow when applied */
+        .co-coupon.applied .co-coupon-row input {
+            border-color: rgba(52,211,153,0.5);
+            background: rgba(52,211,153,0.05);
+        }
     </style>
 
     <div class="co-page co-wrap">
@@ -316,7 +416,7 @@
 
         <div class="co-grid">
 
-            {{-- LEFT: Product summary --}}
+            {{-- ══ LEFT: Product summary ══ --}}
             <div class="co-panel">
                 <div class="co-summary-media">
                     @if ($product->image)
@@ -345,6 +445,17 @@
                         <span>Tax / Fees</span>
                         <span>৳0</span>
                     </div>
+
+                    {{-- Discount row (hidden by default) --}}
+                    <div class="co-price-row discount" id="discountRow" style="display:none;">
+                        <span>
+                            Discount
+                            <span class="co-coupon-tag" id="couponCodeLabel"></span>
+                            <button type="button" class="co-remove-coupon" id="removeCoupon">remove</button>
+                        </span>
+                        <span class="co-discount" id="discountAmount">−৳0</span>
+                    </div>
+
                     <div class="co-price-row total">
                         <span>Total Due</span>
                         <span class="co-amount" id="amount-display">৳{{ number_format($product->final_price_bdt, 0) }}</span>
@@ -368,7 +479,7 @@
                 </div>
             </div>
 
-            {{-- RIGHT: Payment method --}}
+            {{-- ══ RIGHT: Payment method ══ --}}
             <div class="co-panel">
                 <form id="checkout-form" method="POST" action="{{ route('bkash.pay') }}">
                     @csrf
@@ -381,6 +492,22 @@
                     <div class="co-user">
                         <span>Account</span>
                         <span class="email">{{ auth()->user()->email }}</span>
+                    </div>
+
+                    {{-- ── Coupon box ── --}}
+                    <div class="co-coupon" id="couponBox">
+                        <div class="co-coupon-label">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                      d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                            </svg>
+                            Have a coupon code?
+                        </div>
+                        <div class="co-coupon-row">
+                            <input type="text" id="couponInput" placeholder="Enter code (e.g. SAVE10)" autocomplete="off" maxlength="50">
+                            <button type="button" id="applyCoupon">Apply</button>
+                        </div>
+                        <div class="co-coupon-msg" id="couponMsg"></div>
                     </div>
 
                     <div class="co-methods">
@@ -426,6 +553,8 @@
                     </div>
 
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    <input type="hidden" name="coupon_code" id="couponHidden" value="">
+                    <input type="hidden" name="discount_amount" id="discountHidden" value="0">
 
                     <button type="submit" class="co-submit">
                         <span>Pay</span>
@@ -443,22 +572,80 @@
     </div>
 
     <script>
+    (function () {
+        // ── Config ──
         const routes = {
             bkash:      "{{ route('bkash.pay') }}",
             paypal:     "{{ route('paypal.pay') }}",
             sslcommerz: "{{ route('sslcommerz.pay') }}",
             cash:       "{{ route('cash.pay') }}",
         };
+        const couponRoute = "{{ route('coupon.apply') }}";
+        const csrfToken   = "{{ csrf_token() }}";
+        const productId   = {{ $product->id }};
 
         const priceBdt = {{ (float) $product->final_price_bdt }};
         const priceUsd = {{ (float) $product->final_price_usd }};
 
+        // ── Elements ──
         const form          = document.getElementById('checkout-form');
         const amountDisplay = document.getElementById('amount-display');
         const subtotalVal   = document.getElementById('subtotal-val');
         const btnAmount     = document.getElementById('btn-amount');
         const methods       = document.querySelectorAll('.co-method');
 
+        const couponBox     = document.getElementById('couponBox');
+        const couponInput   = document.getElementById('couponInput');
+        const applyBtn      = document.getElementById('applyCoupon');
+        const couponMsg     = document.getElementById('couponMsg');
+        const discountRow   = document.getElementById('discountRow');
+        const discountAmt   = document.getElementById('discountAmount');
+        const couponLbl     = document.getElementById('couponCodeLabel');
+        const couponHidden  = document.getElementById('couponHidden');
+        const discountHidden= document.getElementById('discountHidden');
+        const removeCoupon  = document.getElementById('removeCoupon');
+
+        // ── State ──
+        let appliedCoupon = null; // { code, discount }
+        let currentMethod = 'bkash';
+
+        // ── Format helpers ──
+        const fmtBdt = (n) => '৳' + Number(n).toFixed(0);
+        const fmtUsd = (n) => '$' + Number(n).toFixed(2);
+
+        // ── Update all visible totals ──
+        function updateTotals() {
+            const isUsd = currentMethod === 'paypal';
+            const base  = isUsd ? priceUsd : priceBdt;
+
+            let total = base;
+            let discountShown = 0;
+
+            if (! isUsd && appliedCoupon) {
+                discountShown = appliedCoupon.discount;
+                total = Math.max(base - discountShown, 0);
+            }
+
+            const fmt = isUsd ? fmtUsd : fmtBdt;
+
+            subtotalVal.textContent   = fmt(base);
+            amountDisplay.textContent = fmt(total);
+            btnAmount.textContent     = fmt(total);
+
+            if (discountShown > 0) {
+                discountRow.style.display = '';
+                discountAmt.textContent = '−' + fmtBdt(discountShown);
+                couponLbl.textContent = '(' + appliedCoupon.code + ')';
+                couponHidden.value = appliedCoupon.code;
+                discountHidden.value = discountShown;
+            } else {
+                discountRow.style.display = 'none';
+                couponHidden.value = '';
+                discountHidden.value = '0';
+            }
+        }
+
+        // ── Method selection ──
         methods.forEach((m) => {
             m.addEventListener('click', () => {
                 methods.forEach((x) => x.classList.remove('selected'));
@@ -466,20 +653,96 @@
 
                 const radio = m.querySelector('input[type="radio"]');
                 radio.checked = true;
+                currentMethod = radio.value;
                 form.action = routes[radio.value];
 
-                if (radio.value === 'paypal') {
-                    const v = '$' + priceUsd.toFixed(2);
-                    amountDisplay.textContent = v;
-                    subtotalVal.textContent = v;
-                    btnAmount.textContent = v;
-                } else {
-                    const v = '৳' + priceBdt.toFixed(0);
-                    amountDisplay.textContent = v;
-                    subtotalVal.textContent = v;
-                    btnAmount.textContent = v;
-                }
+                updateTotals();
             });
         });
+
+        // ── Coupon apply ──
+        applyBtn.addEventListener('click', async () => {
+            const code = couponInput.value.trim();
+            if (! code) {
+                setMsg('error', 'Please enter a coupon code.');
+                return;
+            }
+
+            applyBtn.disabled = true;
+            setMsg('info', 'Checking...');
+
+            try {
+                const res = await fetch(couponRoute, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        product_id: productId,
+                    }),
+                });
+
+                const data = await res.json();
+
+                if (! data.ok) {
+                    appliedCoupon = null;
+                    setMsg('error', data.message || 'Invalid coupon.');
+                    couponBox.classList.remove('applied');
+                    updateTotals();
+                    return;
+                }
+
+                appliedCoupon = {
+                    code: data.coupon.code,
+                    discount: Number(data.discount),
+                };
+
+                couponBox.classList.add('applied');
+                couponInput.disabled = true;
+                applyBtn.textContent = 'Applied';
+                applyBtn.disabled = true;
+
+                setMsg('ok', data.message);
+                updateTotals();
+
+            } catch (e) {
+                setMsg('error', 'Something went wrong. Try again.');
+            } finally {
+                if (! appliedCoupon) applyBtn.disabled = false;
+            }
+        });
+
+        // Enter key applies
+        couponInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyBtn.click();
+            }
+        });
+
+        // ── Remove coupon ──
+        removeCoupon.addEventListener('click', () => {
+            appliedCoupon = null;
+            couponInput.value = '';
+            couponInput.disabled = false;
+            applyBtn.disabled = false;
+            applyBtn.textContent = 'Apply';
+            couponBox.classList.remove('applied');
+            setMsg('', '');
+            updateTotals();
+        });
+
+        // ── Message helper ──
+        function setMsg(type, text) {
+            couponMsg.className = 'co-coupon-msg' + (type ? ' ' + type : '');
+            couponMsg.textContent = text || '';
+        }
+
+        // ── Init ──
+        updateTotals();
+    })();
     </script>
 </x-app-layout>

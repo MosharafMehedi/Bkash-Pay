@@ -10,6 +10,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SslCommerzController;
 use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\RoleController as AdminRoleController;
+use App\Http\Controllers\Admin\PermissionController as AdminPermissionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -18,35 +21,78 @@ Route::get('/', function () {
 
 Route::middleware('auth')->group(function () {
 
-    // ── User ──
+    // ── User (all authenticated roles) ──
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
     Route::get('/checkout/{product}', [ProductController::class, 'checkout'])->name('checkout.show');
 
-    // ── Coupon apply (user) ──
+    // ── Coupon apply ──
     Route::post('/coupon/apply', [CouponController::class, 'apply'])->name('coupon.apply');
 
-    // ── Admin ──
-    Route::prefix('admin')->name('admin.')->group(function () {
+    // ═══════════════════════════════════════════════════════════
+    //  ADMIN PANEL — only role:admin
+    // ═══════════════════════════════════════════════════════════
+    Route::middleware('role:admin')
+        ->prefix('admin')
+        ->name('admin.')
+        ->group(function () {
 
-        // Products
-        Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
-        Route::get('/products/create', [AdminProductController::class, 'create'])->name('products.create');
-        Route::post('/products', [AdminProductController::class, 'store'])->name('products.store');
-        Route::get('/products/{product}/edit', [AdminProductController::class, 'edit'])->name('products.edit');
-        Route::put('/products/{product}', [AdminProductController::class, 'update'])->name('products.update');
-        Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
-        Route::patch('/products/{product}/toggle', [AdminProductController::class, 'toggleStatus'])->name('products.toggle');
+            // Products
+            Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
+            Route::get('/products/create', [AdminProductController::class, 'create'])->name('products.create');
+            Route::post('/products', [AdminProductController::class, 'store'])->name('products.store');
+            Route::get('/products/{product}/edit', [AdminProductController::class, 'edit'])->name('products.edit');
+            Route::put('/products/{product}', [AdminProductController::class, 'update'])->name('products.update');
+            Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
+            Route::patch('/products/{product}/toggle', [AdminProductController::class, 'toggleStatus'])->name('products.toggle');
 
-        // Coupons
-        Route::get('/coupons', [AdminCouponController::class, 'index'])->name('coupons.index');
-        Route::get('/coupons/create', [AdminCouponController::class, 'create'])->name('coupons.create');
-        Route::post('/coupons', [AdminCouponController::class, 'store'])->name('coupons.store');
-        Route::get('/coupons/{coupon}/edit', [AdminCouponController::class, 'edit'])->name('coupons.edit');
-        Route::put('/coupons/{coupon}', [AdminCouponController::class, 'update'])->name('coupons.update');
-        Route::delete('/coupons/{coupon}', [AdminCouponController::class, 'destroy'])->name('coupons.destroy');
-        Route::patch('/coupons/{coupon}/toggle', [AdminCouponController::class, 'toggle'])->name('coupons.toggle');
-    });
+            // Coupons
+            Route::get('/coupons', [AdminCouponController::class, 'index'])->name('coupons.index');
+            Route::get('/coupons/create', [AdminCouponController::class, 'create'])->name('coupons.create');
+            Route::post('/coupons', [AdminCouponController::class, 'store'])->name('coupons.store');
+            Route::get('/coupons/{coupon}/edit', [AdminCouponController::class, 'edit'])->name('coupons.edit');
+            Route::put('/coupons/{coupon}', [AdminCouponController::class, 'update'])->name('coupons.update');
+            Route::delete('/coupons/{coupon}', [AdminCouponController::class, 'destroy'])->name('coupons.destroy');
+            Route::patch('/coupons/{coupon}/toggle', [AdminCouponController::class, 'toggle'])->name('coupons.toggle');
+
+            // Users (permission: user.view)
+            Route::middleware('permission:user.view')->group(function () {
+                Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+                Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
+                Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
+                Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
+                Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+                Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+                Route::patch('/users/{user}/toggle', [AdminUserController::class, 'toggle'])->name('users.toggle');
+            });
+
+            // Roles (permission: role.view)
+            Route::middleware('permission:role.view')->group(function () {
+                Route::get('/roles', [AdminRoleController::class, 'index'])->name('roles.index');
+                Route::get('/roles/create', [AdminRoleController::class, 'create'])->name('roles.create');
+                Route::post('/roles', [AdminRoleController::class, 'store'])->name('roles.store');
+                Route::get('/roles/{role}/edit', [AdminRoleController::class, 'edit'])->name('roles.edit');
+                Route::put('/roles/{role}', [AdminRoleController::class, 'update'])->name('roles.update');
+                Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy'])->name('roles.destroy');
+            });
+
+            // Permissions (permission: permission.view)
+            Route::middleware('permission:permission.view')->group(function () {
+                Route::get('/permissions', [AdminPermissionController::class, 'index'])->name('permissions.index');
+            });
+        });
+
+    // ═══════════════════════════════════════════════════════════
+    //  DELIVERY / VENDOR PANEL — placeholder (future delivery)
+    // ═══════════════════════════════════════════════════════════
+    Route::middleware('role:delivery_man|vendor|admin')
+        ->prefix('delivery')
+        ->name('delivery.')
+        ->group(function () {
+            Route::get('/dashboard', function () {
+                return 'Delivery dashboard — coming soon';
+            })->name('dashboard');
+        });
 
     // ── bKash ──
     Route::post('/bkash/pay', [BkashController::class, 'pay'])->name('bkash.pay');

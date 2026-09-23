@@ -21,6 +21,7 @@ class AuthenticatedSessionController extends Controller
 
     /**
      * Handle an incoming authentication request.
+     * Redirects based on user role.
      */
     public function store(LoginRequest $request): RedirectResponse
     {
@@ -28,6 +29,29 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = auth()->user();
+
+        // Inactive users cannot log in
+        if ($user->status == 2) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Your account has been deactivated. Please contact support.',
+            ]);
+        }
+
+        // ── Role-based redirect ──
+        if ($user->hasRole('admin')) {
+            return redirect()->intended(route('admin.orders.index', absolute: false));
+        }
+
+        if ($user->hasRole('delivery_man') || $user->hasRole('vendor')) {
+            return redirect()->intended(route('delivery.dashboard', absolute: false));
+        }
+
+        // Default: customer
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

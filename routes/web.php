@@ -16,6 +16,8 @@ use App\Http\Controllers\Admin\PermissionController as AdminPermissionController
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\DeliveryChargeController as AdminDeliveryChargeController;
 use App\Http\Controllers\MyOrderController;
+use App\Http\Controllers\Delivery\DashboardController as DeliveryDashboardController;
+use App\Http\Controllers\Delivery\OrderController as DeliveryOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -117,16 +119,16 @@ Route::middleware('auth')->group(function () {
     // ═══════════════════════════════════════════════════════════
     //  DELIVERY PANEL — delivery_man / vendor / admin
     // ═══════════════════════════════════════════════════════════
-    // Route::middleware('role:delivery_man|vendor|admin')
-    //     ->prefix('delivery')
-    //     ->name('delivery.')
-    //     ->group(function () {
-    //         Route::get('/dashboard', [\App\Http\Controllers\Delivery\DashboardController::class, 'index'])->name('dashboard');
-    //         Route::get('/orders', [\App\Http\Controllers\Delivery\OrderController::class, 'index'])->name('orders.index');
-    //         Route::get('/orders/{order}', [\App\Http\Controllers\Delivery\OrderController::class, 'show'])->name('orders.show');
-    //         Route::post('/orders/{order}/verify-code', [\App\Http\Controllers\Delivery\OrderController::class, 'verifyCode'])->name('orders.verify');
-    //         Route::post('/orders/{order}/out-for-delivery', [\App\Http\Controllers\Delivery\OrderController::class, 'markOutForDelivery'])->name('orders.out');
-    //     });
+    Route::middleware('role:delivery_man|vendor|admin')
+        ->prefix('delivery')
+        ->name('delivery.')
+        ->group(function () {
+            Route::get('/dashboard', [DeliveryDashboardController::class, 'index'])->name('dashboard');
+            Route::get('/orders', [DeliveryOrderController::class, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [DeliveryOrderController::class, 'show'])->name('orders.show');
+            Route::post('/orders/{order}/verify-code', [DeliveryOrderController::class, 'verifyCode'])->name('orders.verify');
+            Route::post('/orders/{order}/out-for-delivery', [DeliveryOrderController::class, 'markOutForDelivery'])->name('orders.out');
+        });
 
     // ── bKash ──
     Route::post('/bkash/pay', [BkashController::class, 'pay'])->name('bkash.pay');

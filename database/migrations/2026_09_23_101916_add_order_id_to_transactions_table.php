@@ -11,12 +11,7 @@ return new class extends Migration
      */
     public function up(): void
 {
-    Schema::table('bkash_transactions', function (Blueprint $table) {
-        $table->foreignId('order_id')->nullable()->after('id')->constrained('orders')->nullOnDelete();
-    });
-    Schema::table('paypal_transactions', function (Blueprint $table) {
-        $table->foreignId('order_id')->nullable()->after('id')->constrained('orders')->nullOnDelete();
-    });
+
     Schema::table('sslcommerz_transactions', function (Blueprint $table) {
         $table->foreignId('order_id')->nullable()->after('id')->constrained('orders')->nullOnDelete();
     });
@@ -30,14 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('bkash_transactions', function (Blueprint $table) {
-            $table->dropForeign(['order_id']);
-            $table->dropColumn('order_id');
-        });
-        Schema::table('paypal_transactions', function (Blueprint $table) {
-            $table->dropForeign(['order_id']);
-            $table->dropColumn('order_id');
-        });
         Schema::table('sslcommerz_transactions', function (Blueprint $table) {
             $table->dropForeign(['order_id']);
             $table->dropColumn('order_id');

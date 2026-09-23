@@ -39,4 +39,17 @@ class User extends Authenticatable
     {
         return $this->hasRole('admin');
     }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+    public function assignedOrders()
+    {
+        return $this->hasMany(Order::class, 'assigned_to');
+    }
+    public function vendorOrders()
+    {
+        return $this->hasMany(Order::class, 'vendor_id');
+    }
 }

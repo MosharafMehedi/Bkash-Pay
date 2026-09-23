@@ -13,6 +13,9 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\PermissionController as AdminPermissionController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\DeliveryChargeController as AdminDeliveryChargeController;
+use App\Http\Controllers\MyOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,13 +24,25 @@ Route::get('/', function () {
 
 Route::middleware('auth')->group(function () {
 
-    // ── User (all authenticated roles) ──
+    // ═══════════════════════════════════════════════════════════
+    //  USER ROUTES
+    // ═══════════════════════════════════════════════════════════
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+
+    // ✅ Delivery charge AJAX — MUST be before /checkout/{product}
+    Route::get('/checkout/delivery-charge', [ProductController::class, 'deliveryCharge'])
+        ->name('checkout.deliveryCharge');
+
     Route::get('/checkout/{product}', [ProductController::class, 'checkout'])->name('checkout.show');
 
-    // ── Coupon apply ──
+    // Coupon apply
     Route::post('/coupon/apply', [CouponController::class, 'apply'])->name('coupon.apply');
+
+    // My Orders (customer)
+    Route::get('/my-orders', [MyOrderController::class, 'index'])->name('my-orders.index');
+    Route::get('/my-orders/{order}', [MyOrderController::class, 'show'])->name('my-orders.show');
 
     // ═══════════════════════════════════════════════════════════
     //  ADMIN PANEL — only role:admin
@@ -54,6 +69,23 @@ Route::middleware('auth')->group(function () {
             Route::put('/coupons/{coupon}', [AdminCouponController::class, 'update'])->name('coupons.update');
             Route::delete('/coupons/{coupon}', [AdminCouponController::class, 'destroy'])->name('coupons.destroy');
             Route::patch('/coupons/{coupon}/toggle', [AdminCouponController::class, 'toggle'])->name('coupons.toggle');
+
+            // ═══ Orders ═══
+            Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+            Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+            Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+            Route::patch('/orders/{order}/assign', [AdminOrderController::class, 'assign'])->name('orders.assign');
+            Route::post('/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
+            Route::post('/orders/{order}/return', [AdminOrderController::class, 'return'])->name('orders.return');
+
+            // ═══ Delivery Charges ═══
+            Route::get('/delivery-charges', [AdminDeliveryChargeController::class, 'index'])->name('delivery-charges.index');
+            Route::get('/delivery-charges/create', [AdminDeliveryChargeController::class, 'create'])->name('delivery-charges.create');
+            Route::post('/delivery-charges', [AdminDeliveryChargeController::class, 'store'])->name('delivery-charges.store');
+            Route::get('/delivery-charges/{deliveryCharge}/edit', [AdminDeliveryChargeController::class, 'edit'])->name('delivery-charges.edit');
+            Route::put('/delivery-charges/{deliveryCharge}', [AdminDeliveryChargeController::class, 'update'])->name('delivery-charges.update');
+            Route::delete('/delivery-charges/{deliveryCharge}', [AdminDeliveryChargeController::class, 'destroy'])->name('delivery-charges.destroy');
+            Route::patch('/delivery-charges/{deliveryCharge}/toggle', [AdminDeliveryChargeController::class, 'toggle'])->name('delivery-charges.toggle');
 
             // Users (permission: user.view)
             Route::middleware('permission:user.view')->group(function () {
@@ -83,16 +115,18 @@ Route::middleware('auth')->group(function () {
         });
 
     // ═══════════════════════════════════════════════════════════
-    //  DELIVERY / VENDOR PANEL — placeholder (future delivery)
+    //  DELIVERY PANEL — delivery_man / vendor / admin
     // ═══════════════════════════════════════════════════════════
-    Route::middleware('role:delivery_man|vendor|admin')
-        ->prefix('delivery')
-        ->name('delivery.')
-        ->group(function () {
-            Route::get('/dashboard', function () {
-                return 'Delivery dashboard — coming soon';
-            })->name('dashboard');
-        });
+    // Route::middleware('role:delivery_man|vendor|admin')
+    //     ->prefix('delivery')
+    //     ->name('delivery.')
+    //     ->group(function () {
+    //         Route::get('/dashboard', [\App\Http\Controllers\Delivery\DashboardController::class, 'index'])->name('dashboard');
+    //         Route::get('/orders', [\App\Http\Controllers\Delivery\OrderController::class, 'index'])->name('orders.index');
+    //         Route::get('/orders/{order}', [\App\Http\Controllers\Delivery\OrderController::class, 'show'])->name('orders.show');
+    //         Route::post('/orders/{order}/verify-code', [\App\Http\Controllers\Delivery\OrderController::class, 'verifyCode'])->name('orders.verify');
+    //         Route::post('/orders/{order}/out-for-delivery', [\App\Http\Controllers\Delivery\OrderController::class, 'markOutForDelivery'])->name('orders.out');
+    //     });
 
     // ── bKash ──
     Route::post('/bkash/pay', [BkashController::class, 'pay'])->name('bkash.pay');
@@ -124,7 +158,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// ── Gateway callbacks (outside auth) ──
+// ═══════════════════════════════════════════════════════════
+//  GATEWAY CALLBACKS (outside auth)
+// ═══════════════════════════════════════════════════════════
 Route::get('/bkash/callback', [BkashController::class, 'callback'])->name('bkash.callback');
 Route::get('/paypal/callback', [PayPalController::class, 'callback'])->name('paypal.callback');
 Route::get('/paypal/cancel', [PayPalController::class, 'cancel'])->name('paypal.cancel');

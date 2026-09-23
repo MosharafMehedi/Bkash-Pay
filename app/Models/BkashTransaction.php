@@ -22,6 +22,7 @@ class BkashTransaction extends Model
         'raw_response',
         'discount_amount',
         'coupon_id',
+        'order_id',
     ];
 
     protected $casts = [
@@ -42,5 +43,9 @@ class BkashTransaction extends Model
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
+    }
+    public function order()
+    {
+        return $this->belongsTo(\App\Models\Order::class);
     }
 }

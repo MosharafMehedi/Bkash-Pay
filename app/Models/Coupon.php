@@ -12,10 +12,19 @@ class Coupon extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'code', 'name', 'description',
-        'type', 'value', 'min_order', 'max_discount',
-        'usage_limit', 'used_count', 'per_user_limit',
-        'starts_at', 'expires_at', 'is_active',
+        'code',
+        'name',
+        'description',
+        'type',
+        'value',
+        'min_order',
+        'max_discount',
+        'usage_limit',
+        'used_count',
+        'per_user_limit',
+        'starts_at',
+        'expires_at',
+        'is_active',
     ];
 
     protected $casts = [
@@ -74,5 +83,9 @@ class Coupon extends Model
         $used = $this->usages()->where('user_id', $userId)->count();
         return $used >= $this->per_user_limit;
     }
-    
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }

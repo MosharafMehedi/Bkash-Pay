@@ -13,14 +13,28 @@ class Product extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'name', 'slug', 'subtitle', 'description',
-        'price_bdt', 'price_usd', 'discount_price',
-        'image', 'gallery',
-        'quantity', 'stock', 'sku',
-        'category', 'brand', 'tags',
-        'rating', 'review_count',
-        'is_active', 'is_featured', 'published_at',
-        'meta_title', 'meta_description',
+        'name',
+        'slug',
+        'subtitle',
+        'description',
+        'price_bdt',
+        'price_usd',
+        'discount_price',
+        'image',
+        'gallery',
+        'quantity',
+        'stock',
+        'sku',
+        'category',
+        'brand',
+        'tags',
+        'rating',
+        'review_count',
+        'is_active',
+        'is_featured',
+        'published_at',
+        'meta_title',
+        'meta_description',
     ];
 
     protected $casts = [
@@ -51,9 +65,18 @@ class Product extends Model
     }
 
     // Scopes
-    public function scopeActive($q)   { return $q->where('is_active', true); }
-    public function scopeFeatured($q) { return $q->where('is_featured', true); }
-    public function scopeInStock($q)  { return $q->where('stock', '>', 0); }
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+    public function scopeFeatured($q)
+    {
+        return $q->where('is_featured', true);
+    }
+    public function scopeInStock($q)
+    {
+        return $q->where('stock', '>', 0);
+    }
 
     // Helpers
     public function getFinalPriceBdtAttribute(): float
@@ -97,5 +120,9 @@ class Product extends Model
         }
 
         return false;
+    }
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 }

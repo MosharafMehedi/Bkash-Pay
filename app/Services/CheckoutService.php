@@ -204,4 +204,29 @@ class CheckoutService
             return true;
         });
     }
+
+    /**
+     * Auto-save delivery info to user profile if fields are empty.
+     */
+    public function syncUserProfile(User $user, array $deliveryData): void
+    {
+        $updates = [];
+
+        if (empty($user->phone) && ! empty($deliveryData['delivery_phone'])) {
+            $updates['phone'] = $deliveryData['delivery_phone'];
+        }
+        if (empty($user->address) && ! empty($deliveryData['delivery_address'])) {
+            $updates['address'] = $deliveryData['delivery_address'];
+        }
+        if (empty($user->city) && ! empty($deliveryData['delivery_city'])) {
+            $updates['city'] = $deliveryData['delivery_city'];
+        }
+        if (empty($user->postal_code) && ! empty($deliveryData['delivery_postal'])) {
+            $updates['postal_code'] = $deliveryData['delivery_postal'];
+        }
+
+        if (! empty($updates)) {
+            $user->update($updates);
+        }
+    }
 }

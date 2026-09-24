@@ -54,6 +54,10 @@ class BkashController extends Controller
             return back()->with('error', 'Sorry, this product is out of stock.');
         }
 
+        if ($request->input('order_type') === 'delivery') {
+            $this->checkout->syncUserProfile($user, $request->all());
+        }
+
         // ── 3. Resolve coupon + balance ──
         $summary = $this->checkout->resolve($user, $product, $request->input('coupon_code'));
 

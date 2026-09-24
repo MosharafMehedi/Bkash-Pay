@@ -176,8 +176,13 @@ class CashController extends Controller
         }
 
         $product = $order->product;
+        $user    = $request->user();
         if (! $product || $product->stock <= 0) {
             return back()->with('error', 'Sorry, this product is now out of stock.');
+        }
+
+        if ($request->input('order_type') === 'delivery') {
+            $this->checkout->syncUserProfile($user, $request->all());
         }
 
         $raw = $order->raw_response ?? [];

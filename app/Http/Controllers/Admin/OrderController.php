@@ -72,13 +72,13 @@ class OrderController extends Controller
 
         // Delivery men list (role: delivery_man)
         $deliveryMen = User::role('delivery_man')
-            ->where('is_active', true)
+            ->where('status', 1)
             ->orderBy('name')
             ->get();
 
         // Vendors list (role: vendor)
         $vendors = User::role('vendor')
-            ->where('is_active', true)
+            ->where('status', 1)
             ->orderBy('name')
             ->get();
 

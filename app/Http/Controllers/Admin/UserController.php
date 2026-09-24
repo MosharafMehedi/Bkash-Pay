@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -29,7 +28,11 @@ class UserController extends Controller
         }
 
         if ($status = $request->query('status')) {
-            $query->where('is_active', $status === 'active');
+            if ($status === 'active') {
+                $query->where('status', 1);
+            } elseif ($status === 'deactive') {
+                $query->where('status', 2);
+            }
         }
 
         $users = $query->latest()->paginate(15)->withQueryString();
@@ -41,22 +44,23 @@ class UserController extends Controller
     public function create()
     {
         $roles = Role::orderBy('name')->get();
+
         return view('admin.users.create', compact('roles'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'phone'    => 'nullable|string|max:20',
-            'address'  => 'nullable|string',
-            'city'     => 'nullable|string|max:100',
+            'name'        => 'required|string|max:255',
+            'email'       => 'required|email|unique:users,email',
+            'password'    => 'required|string|min:8|confirmed',
+            'phone'       => 'nullable|string|max:20',
+            'address'     => 'nullable|string',
+            'city'        => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
-            'roles'    => 'required|array|min:1',
-            'roles.*'  => 'exists:roles,name',
-            'is_active' => 'boolean',
+            'roles'       => 'required|array|min:1',
+            'roles.*'     => 'exists:roles,name',
+            'status'      => 'nullable|in:1,2',
         ]);
 
         $user = User::create([
@@ -67,7 +71,7 @@ class UserController extends Controller
             'address'     => $data['address'] ?? null,
             'city'        => $data['city'] ?? null,
             'postal_code' => $data['postal_code'] ?? null,
-            'is_active'   => $request->boolean('is_active', true),
+            'status'      => $data['status'] ?? 1,
         ]);
 
         $user->syncRoles($data['roles']);
@@ -81,22 +85,27 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles = Role::orderBy('name')->get();
+
         return view('admin.users.edit', compact('user', 'roles'));
     }
 
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => ['required', 'email', Rule::unique('users')->ignore($user->id)],
-            'password' => 'nullable|string|min:8|confirmed',
-            'phone'    => 'nullable|string|max:20',
-            'address'  => 'nullable|string',
-            'city'     => 'nullable|string|max:100',
+            'name'        => 'required|string|max:255',
+            'email'       => [
+                'required',
+                'email',
+                Rule::unique('users')->ignore($user->id),
+            ],
+            'password'    => 'nullable|string|min:8|confirmed',
+            'phone'       => 'nullable|string|max:20',
+            'address'     => 'nullable|string',
+            'city'        => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
-            'roles'    => 'required|array|min:1',
-            'roles.*'  => 'exists:roles,name',
-            'is_active' => 'boolean',
+            'roles'       => 'required|array|min:1',
+            'roles.*'     => 'exists:roles,name',
+            'status'      => 'nullable|in:1,2',
         ]);
 
         // Prevent admin from changing own roles
@@ -109,34 +118,45 @@ class UserController extends Controller
             'address'     => $data['address'] ?? null,
             'city'        => $data['city'] ?? null,
             'postal_code' => $data['postal_code'] ?? null,
-            'is_active'   => $request->boolean('is_active', true),
+            'status'      => $data['status'] ?? 1,
         ]);
 
-        if (! empty($data['password'])) {
-            $user->update(['password' => Hash::make($data['password'])]);
+        if (!empty($data['password'])) {
+            $user->update([
+                'password' => Hash::make($data['password']),
+            ]);
         }
 
-        if (! $isSelf) {
+        if (!$isSelf) {
             $user->syncRoles($data['roles']);
         }
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         return redirect()->route('admin.users.index')
-            ->with('success', $isSelf
-                ? 'Profile updated (roles not changed for self).'
-                : 'User updated successfully.');
+            ->with(
+                'success',
+                $isSelf
+                    ? 'Profile updated (roles not changed for self).'
+                    : 'User updated successfully.'
+            );
     }
 
     public function destroy(User $user)
     {
         if ($user->id === auth()->id()) {
-            return back()->with('error', 'You cannot delete your own account.');
+            return back()->with(
+                'error',
+                'You cannot delete your own account.'
+            );
         }
 
         // Prevent deleting last admin
         if ($user->hasRole('admin') && User::role('admin')->count() <= 1) {
-            return back()->with('error', 'Cannot delete the last admin user.');
+            return back()->with(
+                'error',
+                'Cannot delete the last admin user.'
+            );
         }
 
         $user->delete();
@@ -147,10 +167,16 @@ class UserController extends Controller
     public function toggle(User $user)
     {
         if ($user->id === auth()->id()) {
-            return back()->with('error', 'You cannot deactivate your own account.');
+            return back()->with(
+                'error',
+                'You cannot deactivate your own account.'
+            );
         }
 
-        $user->update(['is_active' => ! $user->is_active]);
+        // 1 = Active, 2 = Deactive
+        $user->update([
+            'status' => $user->status == 1 ? 2 : 1,
+        ]);
 
         return back()->with('success', 'User status updated.');
     }

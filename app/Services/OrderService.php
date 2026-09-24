@@ -200,7 +200,7 @@ class OrderService
         DB::transaction(function () use ($order) {
             $order->update([
                 'delivery_code_used_at' => now(),
-                'delivery_code'         => null,   // consume
+                // 'delivery_code'         => null,
             ]);
         });
 

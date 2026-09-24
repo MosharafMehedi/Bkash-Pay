@@ -151,17 +151,23 @@
         @endforeach
     </div>
 </div>
-
 {{-- Status --}}
 <div class="uf-section">
     <div class="uf-title">Status</div>
-    <label class="flex items-center gap-2.5 cursor-pointer">
-        <input type="hidden" name="is_active" value="0">
-        <input type="checkbox" name="is_active" value="1"
-               {{ old('is_active', $u->is_active ?? true) ? 'checked' : '' }}
-               style="width:16px; height:16px; accent-color:#29e7ff;">
-        <span style="font-size:0.875rem; color:#cbd5e1;">Active (can login)</span>
-    </label>
+
+    <label class="uf-label">Account Status</label>
+
+    <select name="status" class="uf-input" style="max-width:250px;">
+        <option value="1"
+            {{ old('status', $u->status ?? 1) == 1 ? 'selected' : '' }}>
+            Active
+        </option>
+
+        <option value="2"
+            {{ old('status', $u->status ?? 1) == 2 ? 'selected' : '' }}>
+            Deactive
+        </option>
+    </select>
 </div>
 
 <div style="display:flex; gap:0.5rem;">

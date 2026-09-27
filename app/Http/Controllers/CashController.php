@@ -211,7 +211,7 @@ class CashController extends Controller
                 'delivery_city'    => $raw['delivery_city'] ?? null,
                 'delivery_postal'  => $raw['delivery_postal'] ?? null,
                 'delivery_note'    => $raw['delivery_note'] ?? null,
-                'payment_status'   => 'unpaid',   // COD → paid on delivery
+                'payment_status'   => 'unpaid',
             ]);
 
             // ── Settle stock + coupon + balance ──

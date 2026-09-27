@@ -1,23 +1,25 @@
 <?php
 
+use App\Http\Controllers\Admin\CouponController as AdminCouponController;
+use App\Http\Controllers\Admin\DeliveryChargeController as AdminDeliveryChargeController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\PermissionController as AdminPermissionController;
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\RoleController as AdminRoleController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BkashController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\CashController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Delivery\DashboardController as DeliveryDashboardController;
+use App\Http\Controllers\Delivery\OrderController as DeliveryOrderController;
+use App\Http\Controllers\MyOrderController;
 use App\Http\Controllers\PayPalController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SslCommerzController;
-use App\Http\Controllers\Admin\CouponController as AdminCouponController;
-use App\Http\Controllers\Admin\ProductController as AdminProductController;
-use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\RoleController as AdminRoleController;
-use App\Http\Controllers\Admin\PermissionController as AdminPermissionController;
-use App\Http\Controllers\Admin\OrderController as AdminOrderController;
-use App\Http\Controllers\Admin\DeliveryChargeController as AdminDeliveryChargeController;
-use App\Http\Controllers\MyOrderController;
-use App\Http\Controllers\Delivery\DashboardController as DeliveryDashboardController;
-use App\Http\Controllers\Delivery\OrderController as DeliveryOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -32,12 +34,16 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
+
 
     // ✅ Delivery charge AJAX — MUST be before /checkout/{product}
     Route::get('/checkout/delivery-charge', [ProductController::class, 'deliveryCharge'])
         ->name('checkout.deliveryCharge');
 
-    Route::get('/checkout/{product}', [ProductController::class, 'checkout'])->name('checkout.show');
+    // ✅ Checkout (cart-based)
+Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+Route::get('/checkout/delivery-charge', [CheckoutController::class, 'deliveryCharge'])->name('checkout.deliveryCharge');
 
     // Coupon apply
     Route::post('/coupon/apply', [CouponController::class, 'apply'])->name('coupon.apply');
@@ -45,6 +51,15 @@ Route::middleware('auth')->group(function () {
     // My Orders (customer)
     Route::get('/my-orders', [MyOrderController::class, 'index'])->name('my-orders.index');
     Route::get('/my-orders/{order}', [MyOrderController::class, 'show'])->name('my-orders.show');
+
+    Route::prefix('cart')->name('cart.')->group(function () {
+        Route::get('/', [CartController::class, 'index'])->name('index');
+        Route::post('/add', [CartController::class, 'add'])->name('add');
+        Route::patch('/{cartItem}', [CartController::class, 'update'])->name('update');
+        Route::delete('/{cartItem}', [CartController::class, 'remove'])->name('remove');
+        Route::delete('/', [CartController::class, 'clear'])->name('clear');
+        Route::get('/count', [CartController::class, 'count'])->name('count');
+    });
 
     // ═══════════════════════════════════════════════════════════
     //  ADMIN PANEL — only role:admin
@@ -172,4 +187,4 @@ Route::post('/sslcommerz/fail', [SslCommerzController::class, 'fail'])->name('ss
 Route::post('/sslcommerz/cancel', [SslCommerzController::class, 'cancel'])->name('sslcommerz.cancel');
 Route::post('/sslcommerz/ipn', [SslCommerzController::class, 'ipn'])->name('sslcommerz.ipn');
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

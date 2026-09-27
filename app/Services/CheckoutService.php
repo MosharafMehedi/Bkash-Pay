@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CartItem;
 use App\Models\Coupon;
 use App\Models\CouponUsage;
 use App\Models\Product;
@@ -11,56 +12,32 @@ use Illuminate\Support\Facades\DB;
 class CheckoutService
 {
     /**
-     * Resolve pricing, coupon and balance for a checkout.
-     *
-     * @return array{
-     *     product: Product,
-     *     subtotal_bdt: float,
-     *     subtotal_usd: float,
-     *     discount_bdt: float,
-     *     discount_usd: float,
-     *     balance_bdt: float,
-     *     balance_usd: float,
-     *     total_bdt: float,
-     *     total_usd: float,
-     *     coupon: ?Coupon,
-     *     coupon_code: ?string,
-     *     coupon_error: ?string,
-     *     balance_used_bdt: float,
-     *     balance_used_usd: float,
-     *     payable_bdt: float,
-     *     payable_usd: float,
-     * }
+     * Resolve pricing for a single product (legacy).
      */
     public function resolve(User $user, Product $product, ?string $couponCode = null): array
     {
         $subtotalBdt = (float) $product->final_price_bdt;
         $subtotalUsd = (float) $product->price_usd;
 
-        $coupon       = null;
-        $couponError  = null;
-        $discountBdt  = 0.0;
-        $discountUsd  = 0.0;
+        $coupon      = null;
+        $couponError = null;
+        $discountBdt = 0.0;
+        $discountUsd = 0.0;
 
-        // ── Coupon ──
         if ($couponCode) {
             [$coupon, $discountBdt, $discountUsd, $couponError] =
                 $this->resolveCoupon($user, $subtotalBdt, $subtotalUsd, $couponCode);
         }
 
-        // ── Wallet balance ──
         $balanceBdt = (float) ($user->balance_bdt ?? 0);
         $balanceUsd = (float) ($user->balance_usd ?? 0);
 
-        // Amount after coupon
         $afterCouponBdt = max($subtotalBdt - $discountBdt, 0);
         $afterCouponUsd = max($subtotalUsd - $discountUsd, 0);
 
-        // Balance covers up to the amount
         $balanceUsedBdt = min($balanceBdt, $afterCouponBdt);
         $balanceUsedUsd = min($balanceUsd, $afterCouponUsd);
 
-        // Payable = after coupon - balance used
         $payableBdt = max($afterCouponBdt - $balanceUsedBdt, 0);
         $payableUsd = max($afterCouponUsd - $balanceUsedUsd, 0);
 
@@ -85,7 +62,71 @@ class CheckoutService
     }
 
     /**
-     * Validate coupon and return [coupon, discountBdt, discountUsd, error].
+     * Resolve cart totals — multi-item.
+     */
+    public function resolveCart(User $user, ?string $couponCode = null): array
+    {
+        $cartItems = CartItem::with('product')
+            ->where('user_id', $user->id)
+            ->get();
+
+        $subtotalBdt = 0;
+        $subtotalUsd = 0;
+
+        foreach ($cartItems as $cartItem) {
+            if ($cartItem->product) {
+                $subtotalBdt += (float) $cartItem->product->final_price_bdt * $cartItem->quantity;
+                $subtotalUsd += (float) $cartItem->product->price_usd * $cartItem->quantity;
+            }
+        }
+
+        $subtotalBdt = round($subtotalBdt, 2);
+        $subtotalUsd = round($subtotalUsd, 2);
+
+        $coupon      = null;
+        $couponError = null;
+        $discountBdt = 0.0;
+        $discountUsd = 0.0;
+
+        if ($couponCode) {
+            [$coupon, $discountBdt, $discountUsd, $couponError] =
+                $this->resolveCoupon($user, $subtotalBdt, $subtotalUsd, $couponCode);
+        }
+
+        $balanceBdt = (float) ($user->balance_bdt ?? 0);
+        $balanceUsd = (float) ($user->balance_usd ?? 0);
+
+        $afterCouponBdt = max($subtotalBdt - $discountBdt, 0);
+        $afterCouponUsd = max($subtotalUsd - $discountUsd, 0);
+
+        $balanceUsedBdt = min($balanceBdt, $afterCouponBdt);
+        $balanceUsedUsd = min($balanceUsd, $afterCouponUsd);
+
+        $payableBdt = max($afterCouponBdt - $balanceUsedBdt, 0);
+        $payableUsd = max($afterCouponUsd - $balanceUsedUsd, 0);
+
+        return [
+            'cart_items'       => $cartItems,
+            'subtotal_bdt'     => $subtotalBdt,
+            'subtotal_usd'     => $subtotalUsd,
+            'discount_bdt'     => round($discountBdt, 2),
+            'discount_usd'     => round($discountUsd, 2),
+            'balance_bdt'      => round($balanceBdt, 2),
+            'balance_usd'      => round($balanceUsd, 2),
+            'total_bdt'        => round($afterCouponBdt, 2),
+            'total_usd'        => round($afterCouponUsd, 2),
+            'coupon'           => $coupon,
+            'coupon_code'      => $coupon?->code,
+            'coupon_error'     => $couponError,
+            'balance_used_bdt' => round($balanceUsedBdt, 2),
+            'balance_used_usd' => round($balanceUsedUsd, 2),
+            'payable_bdt'      => round($payableBdt, 2),
+            'payable_usd'      => round($payableUsd, 2),
+        ];
+    }
+
+    /**
+     * Validate coupon.
      */
     private function resolveCoupon(User $user, float $subtotalBdt, float $subtotalUsd, string $code): array
     {
@@ -109,10 +150,7 @@ class CheckoutService
             return [null, 0, 0, 'Minimum order ৳' . number_format($coupon->min_order, 0) . ' required.'];
         }
 
-        // BDT discount
         $discountBdt = $coupon->discountFor($subtotalBdt);
-
-        // USD equivalent (same percentage; for fixed we scale by BDT→USD ratio)
         $discountUsd = $subtotalBdt > 0
             ? round($discountBdt * ($subtotalUsd / $subtotalBdt), 2)
             : 0;
@@ -121,48 +159,32 @@ class CheckoutService
     }
 
     /**
-     * Redeem the coupon (mark usage & increment counter).
-     * Call this AFTER payment is confirmed.
+     * Sync delivery info to user profile (if empty).
      */
-    public function redeemCoupon(?Coupon $coupon, User $user, Product $product, string $orderRef, float $discountAmount): void
+    public function syncUserProfile(User $user, array $data): void
     {
-        if (! $coupon) {
-            return;
+        $updates = [];
+
+        if (empty($user->phone) && ! empty($data['delivery_phone'])) {
+            $updates['phone'] = $data['delivery_phone'];
+        }
+        if (empty($user->address) && ! empty($data['delivery_address'])) {
+            $updates['address'] = $data['delivery_address'];
+        }
+        if (empty($user->city) && ! empty($data['delivery_city'])) {
+            $updates['city'] = $data['delivery_city'];
+        }
+        if (empty($user->postal_code) && ! empty($data['delivery_postal'])) {
+            $updates['postal_code'] = $data['delivery_postal'];
         }
 
-        DB::transaction(function () use ($coupon, $user, $product, $orderRef, $discountAmount) {
-            $coupon->increment('used_count');
-
-            CouponUsage::create([
-                'coupon_id'       => $coupon->id,
-                'user_id'         => $user->id,
-                'product_id'      => $product->id,
-                'order_ref'       => $orderRef,
-                'discount_amount' => $discountAmount,
-            ]);
-        });
-    }
-
-    /**
-     * Deduct wallet balance (only the portion actually used).
-     * Call this AFTER payment is confirmed.
-     */
-    public function deductBalance(User $user, float $amountBdt = 0, float $amountUsd = 0): void
-    {
-        if ($amountBdt <= 0 && $amountUsd <= 0) {
-            return;
-        }
-
-        if ($amountBdt > 0) {
-            $user->decrement('balance_bdt', $amountBdt);
-        }
-        if ($amountUsd > 0) {
-            $user->decrement('balance_usd', $amountUsd);
+        if (! empty($updates)) {
+            $user->update($updates);
         }
     }
 
     /**
-     * Full post-payment settlement: decrement stock, redeem coupon, deduct balance.
+     * Settle: legacy single-product settle.
      */
     public function settle(
         User $user,
@@ -174,17 +196,14 @@ class CheckoutService
         string $orderRef
     ): bool {
         return DB::transaction(function () use ($user, $product, $coupon, $discountAmount, $balanceUsedBdt, $balanceUsedUsd, $orderRef) {
-
-            // 1. Stock decrement
             if (! $product->decrementStock()) {
                 throw new \RuntimeException('Stock unavailable for product #' . $product->id);
             }
 
-            // 2. Coupon usage
             if ($coupon && $discountAmount > 0) {
                 $coupon->increment('used_count');
 
-                \App\Models\CouponUsage::create([
+                CouponUsage::create([
                     'coupon_id'       => $coupon->id,
                     'user_id'         => $user->id,
                     'product_id'      => $product->id,
@@ -193,7 +212,6 @@ class CheckoutService
                 ]);
             }
 
-            // 3. Balance deduct
             if ($balanceUsedBdt > 0) {
                 $user->decrement('balance_bdt', $balanceUsedBdt);
             }
@@ -203,30 +221,5 @@ class CheckoutService
 
             return true;
         });
-    }
-
-    /**
-     * Auto-save delivery info to user profile if fields are empty.
-     */
-    public function syncUserProfile(User $user, array $deliveryData): void
-    {
-        $updates = [];
-
-        if (empty($user->phone) && ! empty($deliveryData['delivery_phone'])) {
-            $updates['phone'] = $deliveryData['delivery_phone'];
-        }
-        if (empty($user->address) && ! empty($deliveryData['delivery_address'])) {
-            $updates['address'] = $deliveryData['delivery_address'];
-        }
-        if (empty($user->city) && ! empty($deliveryData['delivery_city'])) {
-            $updates['city'] = $deliveryData['delivery_city'];
-        }
-        if (empty($user->postal_code) && ! empty($deliveryData['delivery_postal'])) {
-            $updates['postal_code'] = $deliveryData['delivery_postal'];
-        }
-
-        if (! empty($updates)) {
-            $user->update($updates);
-        }
     }
 }

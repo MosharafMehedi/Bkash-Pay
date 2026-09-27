@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Mail\OrderPlacedMail;
 use App\Mail\OrderStatusChangedMail;
+use App\Models\CartItem;
 use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Models\DeliveryCharge;
 use App\Models\DeliveryStatusLog;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -39,14 +42,12 @@ class OrderService
     }
 
     /**
-     * Generate 6-char alphanumeric delivery code (uppercase, no confusing chars)
-     * Example: A3K9Z2
+     * Generate 6-char alphanumeric delivery code.
      */
     public function generateDeliveryCode(): string
     {
         do {
             $code = strtoupper(Str::random(6));
-            // Remove confusing chars (0/O, 1/I/L)
             $code = str_replace(['0', 'O', '1', 'I', 'L'], ['8', 'Q', '9', 'J', 'K'], $code);
         } while (Order::where('delivery_code', $code)->exists());
 
@@ -54,62 +55,107 @@ class OrderService
     }
 
     /**
-     * Create an order from any transaction source (gateway success / COD verify).
-     *
-     * @param array $data {
-     *     user_id, source_type, source_id, product_id, quantity,
-     *     subtotal, discount_amount, coupon_id, coupon_code,
-     *     delivery_charge, total_amount, currency,
-     *     order_type, delivery_method,
-     *     delivery_name, delivery_phone, delivery_address,
-     *     delivery_city, delivery_postal, delivery_note,
-     * }
+     * Create an order from the user's cart.
      */
-    public function createFromTransaction(array $data): Order
-    {
-        return DB::transaction(function () use ($data) {
-            $product = Product::find($data['product_id']);
+    public function createFromCart(
+        User $user,
+        string $sourceType,
+        ?int $sourceId = null,
+        array $deliveryData = [],
+        string $paymentStatus = 'unpaid',
+        float $deliveryCharge = 0,
+        float $discountAmount = 0,
+        ?int $couponId = null,
+        ?string $couponCode = null
+    ): Order {
+        return DB::transaction(function () use (
+            $user, $sourceType, $sourceId, $deliveryData,
+            $paymentStatus, $deliveryCharge, $discountAmount, $couponId, $couponCode
+        ) {
+            // Load cart items
+            $cartItems = CartItem::with('product')
+                ->where('user_id', $user->id)
+                ->get();
 
+            if ($cartItems->isEmpty()) {
+                throw new \RuntimeException('Cart is empty.');
+            }
+
+            // Calculate subtotal
+            $subtotal = 0;
+            foreach ($cartItems as $cartItem) {
+                $product = $cartItem->product;
+
+                if (! $product || ! $product->is_active) {
+                    throw new \RuntimeException('Some products in your cart are no longer available.');
+                }
+
+                if ($product->stock < $cartItem->quantity) {
+                    throw new \RuntimeException("Not enough stock for {$product->name}.");
+                }
+
+                $subtotal += $cartItem->line_total;
+            }
+
+            $subtotal    = round($subtotal, 2);
+            $totalAmount = max($subtotal + $deliveryCharge - $discountAmount, 0);
+
+            // Create order
             $order = Order::create([
-                'user_id'                  => $data['user_id'],
+                'user_id'                  => $user->id,
                 'order_number'             => $this->generateOrderNumber(),
                 'delivery_code'            => $this->generateDeliveryCode(),
                 'delivery_code_expires_at' => now()->addDays(7),
                 'delivery_code_attempts'   => 0,
 
-                'source_type'              => $data['source_type'],
-                'source_id'                => $data['source_id'] ?? null,
+                'source_type'              => $sourceType,
+                'source_id'                => $sourceId,
 
-                'product_id'               => $data['product_id'],
-                'product_name'             => $product->name ?? ($data['product_name'] ?? 'Unknown'),
-                'quantity'                 => $data['quantity'] ?? 1,
+                // Legacy columns (nullable)
+                'product_id'               => null,
+                'product_name'             => null,
+                'quantity'                 => null,
 
-                'subtotal'                 => $data['subtotal'],
-                'discount_amount'          => $data['discount_amount'] ?? 0,
-                'coupon_id'                => $data['coupon_id'] ?? null,
-                'coupon_code'              => $data['coupon_code'] ?? null,
-                'delivery_charge'          => $data['delivery_charge'] ?? 0,
-                'total_amount'             => $data['total_amount'],
-                'currency'                 => $data['currency'] ?? 'BDT',
+                'subtotal'                 => $subtotal,
+                'discount_amount'          => $discountAmount,
+                'coupon_id'                => $couponId,
+                'coupon_code'              => $couponCode,
+                'delivery_charge'          => $deliveryCharge,
+                'total_amount'             => $totalAmount,
+                'currency'                 => 'BDT',
 
-                'order_type'               => $data['order_type'] ?? 'delivery',
-                'delivery_method'          => $data['delivery_method'] ?? 'self',
+                'order_type'               => $deliveryData['order_type'] ?? 'delivery',
+                'delivery_method'          => $deliveryData['delivery_method'] ?? 'self',
 
-                'delivery_name'            => $data['delivery_name'],
-                'delivery_phone'           => $data['delivery_phone'],
-                'delivery_address'         => $data['delivery_address'] ?? null,
-                'delivery_city'            => $data['delivery_city'] ?? null,
-                'delivery_postal'          => $data['delivery_postal'] ?? null,
-                'delivery_note'            => $data['delivery_note'] ?? null,
+                'delivery_name'            => $deliveryData['delivery_name'] ?? $user->name ?? 'Customer',
+                'delivery_phone'           => $deliveryData['delivery_phone'] ?? $user->phone ?? 'N/A',
+                'delivery_address'         => $deliveryData['delivery_address'] ?? null,
+                'delivery_city'            => $deliveryData['delivery_city'] ?? null,
+                'delivery_postal'          => $deliveryData['delivery_postal'] ?? null,
+                'delivery_note'            => $deliveryData['delivery_note'] ?? null,
 
                 'status'                   => 'pending',
-                'payment_status'           => $data['payment_status'] ?? 'unpaid',
+                'payment_status'           => $paymentStatus,
             ]);
+
+            // Create order items
+            foreach ($cartItems as $cartItem) {
+                $product = $cartItem->product;
+
+                OrderItem::create([
+                    'order_id'     => $order->id,
+                    'product_id'   => $product->id,
+                    'product_name' => $product->name,
+                    'quantity'     => $cartItem->quantity,
+                    'unit_price'   => $product->final_price_bdt,
+                    'total_price'  => $cartItem->line_total,
+                ]);
+            }
 
             // Log initial status
             $this->logStatus($order, 'pending', null, 'Order placed');
 
-            // Send order-placed email with delivery code
+            // Send order placed email
             try {
                 Mail::to($order->user->email)->send(new OrderPlacedMail($order));
             } catch (\Throwable $e) {
@@ -121,7 +167,7 @@ class OrderService
     }
 
     /**
-     * Update order status + log + optional email.
+     * Update order status + log + email.
      */
     public function updateStatus(
         Order $order,
@@ -130,7 +176,6 @@ class OrderService
         ?string $note = null,
         bool $sendEmail = true
     ): Order {
-        // Prevent re-updating to same status
         if ($order->status === $newStatus) {
             return $order;
         }
@@ -153,8 +198,10 @@ class OrderService
             // Log
             $this->logStatus($order, $newStatus, $changedBy?->id, $note);
 
-            // Email
-            if ($sendEmail && $order->user?->email) {
+            // Email — ONLY for delivery complete statuses
+            $notifyStatuses = ['delivered', 'picked_up'];
+
+            if ($sendEmail && in_array($newStatus, $notifyStatuses) && $order->user?->email) {
                 try {
                     Mail::to($order->user->email)->send(new OrderStatusChangedMail($order, $newStatus));
                 } catch (\Throwable $e) {
@@ -167,41 +214,32 @@ class OrderService
     }
 
     /**
-     * Verify a delivery code for a delivery man.
-     * Returns [success, message, order].
+     * Verify delivery code.
      */
     public function verifyDeliveryCode(string $code, Order $order): array
     {
         $code = strtoupper(trim($code));
 
-        // Code already used?
         if ($order->isDeliveryCodeUsed()) {
             return [false, 'This order has already been delivered.', $order];
         }
 
-        // Expired?
         if ($order->isDeliveryCodeExpired()) {
             return [false, 'Delivery code has expired.', $order];
         }
 
-        // Attempts exceeded?
         if ($order->delivery_code_attempts >= 3) {
             return [false, 'Too many incorrect attempts. Try again tomorrow.', $order];
         }
 
-        // Match?
         if ($order->delivery_code !== $code) {
             $order->increment('delivery_code_attempts');
             $remaining = 3 - $order->delivery_code_attempts;
             return [false, "Incorrect code. {$remaining} attempts remaining.", $order->fresh()];
         }
 
-        // ✅ Success — mark as used and update status
         DB::transaction(function () use ($order) {
-            $order->update([
-                'delivery_code_used_at' => now(),
-                // 'delivery_code'         => null,
-            ]);
+            $order->update(['delivery_code_used_at' => now()]);
         });
 
         $targetStatus = $order->isPickup() ? 'picked_up' : 'delivered';
@@ -217,6 +255,64 @@ class OrderService
     }
 
     /**
+     * Settle cart — stock decrement + coupon + balance.
+     */
+    public function settleCart(
+        User $user,
+        Order $order,
+        ?Coupon $coupon = null,
+        float $discountAmount = 0,
+        float $balanceUsedBdt = 0,
+        float $balanceUsedUsd = 0
+    ): bool {
+        return DB::transaction(function () use ($user, $order, $coupon, $discountAmount, $balanceUsedBdt, $balanceUsedUsd) {
+            // Stock decrement per item
+            foreach ($order->items as $orderItem) {
+                $product = Product::find($orderItem->product_id);
+
+                if ($product) {
+                    $affected = Product::where('id', $product->id)
+                        ->where('stock', '>=', $orderItem->quantity)
+                        ->update([
+                            'stock'    => DB::raw('stock - ' . (int) $orderItem->quantity),
+                            'quantity' => DB::raw('GREATEST(quantity - ' . (int) $orderItem->quantity . ', 0)'),
+                        ]);
+
+                    if (! $affected) {
+                        throw new \RuntimeException("Stock unavailable for {$product->name}.");
+                    }
+                }
+            }
+
+            // Coupon redeem
+            if ($coupon && $discountAmount > 0) {
+                $coupon->increment('used_count');
+
+                CouponUsage::create([
+                    'coupon_id'       => $coupon->id,
+                    'user_id'         => $user->id,
+                    'product_id'      => null,
+                    'order_ref'       => $order->order_number,
+                    'discount_amount' => $discountAmount,
+                ]);
+            }
+
+            // Balance deduct
+            if ($balanceUsedBdt > 0) {
+                $user->decrement('balance_bdt', $balanceUsedBdt);
+            }
+            if ($balanceUsedUsd > 0) {
+                $user->decrement('balance_usd', $balanceUsedUsd);
+            }
+
+            // Cart clear
+            CartItem::where('user_id', $user->id)->delete();
+
+            return true;
+        });
+    }
+
+    /**
      * Calculate delivery charge for a city + order amount.
      */
     public function calculateDeliveryCharge(?string $city, float $orderAmount): array
@@ -225,9 +321,7 @@ class OrderService
             return ['charge' => 0, 'free' => false, 'estimated_days' => null];
         }
 
-        $charge = DeliveryCharge::active()
-            ->where('city', $city)
-            ->first();
+        $charge = DeliveryCharge::active()->where('city', $city)->first();
 
         if (! $charge) {
             return ['charge' => 0, 'free' => false, 'estimated_days' => null, 'not_found' => true];
@@ -246,7 +340,7 @@ class OrderService
     }
 
     /**
-     * Cancel order + refund stock (optional).
+     * Cancel order + return stock.
      */
     public function cancelOrder(Order $order, ?User $cancelledBy = null, ?string $note = null): Order
     {
@@ -255,11 +349,13 @@ class OrderService
         }
 
         return DB::transaction(function () use ($order, $cancelledBy, $note) {
-            // Return stock (if not already returned)
-            $product = $order->product;
-            if ($product && $order->status !== 'cancelled') {
-                $product->increment('stock', $order->quantity);
-                $product->increment('quantity', $order->quantity);
+            // Return stock per item
+            foreach ($order->items as $orderItem) {
+                $product = Product::find($orderItem->product_id);
+                if ($product && $order->status !== 'cancelled') {
+                    $product->increment('stock', $orderItem->quantity);
+                    $product->increment('quantity', $orderItem->quantity);
+                }
             }
 
             return $this->updateStatus($order, 'cancelled', $cancelledBy, $note);
@@ -267,16 +363,17 @@ class OrderService
     }
 
     /**
-     * Mark order as returned (delivery failed).
+     * Return order.
      */
     public function returnOrder(Order $order, ?User $returnedBy = null, ?string $note = null): Order
     {
         return DB::transaction(function () use ($order, $returnedBy, $note) {
-            // Return stock
-            $product = $order->product;
-            if ($product) {
-                $product->increment('stock', $order->quantity);
-                $product->increment('quantity', $order->quantity);
+            foreach ($order->items as $orderItem) {
+                $product = Product::find($orderItem->product_id);
+                if ($product) {
+                    $product->increment('stock', $orderItem->quantity);
+                    $product->increment('quantity', $orderItem->quantity);
+                }
             }
 
             return $this->updateStatus($order, 'returned', $returnedBy, $note);

@@ -125,6 +125,9 @@
             -webkit-backdrop-filter: blur(18px);
             transition: transform 0.3s cubic-bezier(.2,.8,.2,1), border-color 0.3s, box-shadow 0.3s;
             overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
         }
         .prod-card::before {
             content: "";
@@ -297,7 +300,8 @@
             display: block;
         }
 
-        .prod-buy {
+        /* View button (replaces Buy) */
+        .prod-view {
             display: inline-flex;
             align-items: center;
             gap: 0.3rem;
@@ -310,21 +314,18 @@
             box-shadow: 0 6px 18px -8px rgba(41,231,255,0.55);
             transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
             white-space: nowrap;
-            text-decoration: none;
         }
-        .prod-buy:hover {
+        .prod-card:hover .prod-view {
             transform: translateY(-1px);
             filter: brightness(1.08);
             box-shadow: 0 10px 22px -8px rgba(41,231,255,0.7);
         }
-        .prod-buy:active { transform: translateY(0); }
-        .prod-buy svg { width: 0.85rem; height: 0.85rem; }
+        .prod-view svg { width: 0.85rem; height: 0.85rem; }
 
-        .prod-buy.disabled {
+        .prod-view.disabled {
             background: rgba(255,255,255,0.06);
             color: var(--text-mu);
             box-shadow: none;
-            pointer-events: none;
             cursor: not-allowed;
         }
 
@@ -399,9 +400,10 @@
                     $stars = str_repeat('★', $rounded) . str_repeat('☆', 5 - $rounded);
                 @endphp
 
-                <div class="prod-card"
-                     data-name="{{ strtolower($product->name) }}"
-                     data-price="{{ $finalPrice }}">
+                <a href="{{ route('products.show', $product) }}"
+                   class="prod-card"
+                   data-name="{{ strtolower($product->name) }}"
+                   data-price="{{ $finalPrice }}">
 
                     {{-- Image --}}
                     <div class="prod-media">
@@ -436,7 +438,7 @@
                         <span>· {{ $reviews }}</span>
                     </div>
 
-                    {{-- Price + Buy --}}
+                    {{-- Price + View --}}
                     <div class="prod-price-row">
                         <div>
                             <span class="prod-price">৳{{ number_format($finalPrice, 0) }}</span>
@@ -446,19 +448,22 @@
                             <span class="prod-price-sub">${{ number_format($product->price_usd, 2) }}</span>
                         </div>
 
+                        {{-- ✅ View button is now a span (nested <a> avoid) --}}
                         @if ($stock > 0)
-                            <a href="{{ route('checkout.show', $product) }}" class="prod-buy">
+                            <span class="prod-view">
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"
-                                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                 </svg>
-                                Buy
-                            </a>
+                                View
+                            </span>
                         @else
-                            <span class="prod-buy disabled">Sold out</span>
+                            <span class="prod-view disabled">Sold out</span>
                         @endif
                     </div>
-                </div>
+                </a>
             @empty
                 <div class="prod-empty">
                     <svg class="w-14 h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">

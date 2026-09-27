@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Mail\PaymentReceiptMail;
 use App\Models\BkashTransaction;
-use App\Models\Product;
 use App\Services\BkashService;
+use App\Services\CartService;
 use App\Services\CheckoutService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
@@ -18,6 +18,7 @@ class BkashController extends Controller
         protected BkashService $bkash,
         protected CheckoutService $checkout,
         protected OrderService $orderService,
+        protected CartService $cart,
     ) {}
 
     public function index()
@@ -32,9 +33,7 @@ class BkashController extends Controller
 
     public function pay(Request $request)
     {
-        // ── 1. Validate ──
-        $validated = $request->validate([
-            'product_id'       => 'required|exists:products,id',
+        $request->validate([
             'coupon_code'      => 'nullable|string|max:50',
             'order_type'       => 'required|in:delivery,pickup',
             'delivery_name'    => 'required_if:order_type,delivery|nullable|string|max:255',
@@ -43,29 +42,25 @@ class BkashController extends Controller
             'delivery_city'    => 'required_if:order_type,delivery|nullable|string|max:100',
             'delivery_postal'  => 'nullable|string|max:20',
             'delivery_note'    => 'nullable|string',
-            'delivery_charge'  => 'nullable|numeric|min:0',
         ]);
 
-        // ── 2. Find product & user ──
-        $product = Product::findOrFail($request->product_id);
-        $user    = $request->user();
+        $user = $request->user();
 
-        if ($product->stock <= 0) {
-            return back()->with('error', 'Sorry, this product is out of stock.');
+        if ($this->cart->isEmpty($user)) {
+            return redirect()->route('products.index')
+                ->with('error', 'Your cart is empty.');
         }
 
         if ($request->input('order_type') === 'delivery') {
             $this->checkout->syncUserProfile($user, $request->all());
         }
 
-        // ── 3. Resolve coupon + balance ──
-        $summary = $this->checkout->resolve($user, $product, $request->input('coupon_code'));
+        $summary = $this->checkout->resolveCart($user, $request->input('coupon_code'));
 
         if (! empty($summary['coupon_error'])) {
             return back()->with('error', $summary['coupon_error']);
         }
 
-        // ── 4. Calculate delivery charge (server-side, never trust client) ──
         $orderType = $request->input('order_type');
 
         if ($orderType === 'delivery') {
@@ -80,56 +75,48 @@ class BkashController extends Controller
 
         $finalTotal = (float) $summary['total_bdt'] + $deliveryCharge;
 
-        // ── 5. If fully covered by wallet, skip gateway ──
+        // Fully covered by wallet
         if ($finalTotal <= 0) {
-            $orderRef = 'INV-' . strtoupper(uniqid());
-
             try {
-                $order = $this->orderService->createFromTransaction([
-                    'user_id'          => $user->id,
-                    'source_type'      => 'bkash',
-                    'source_id'        => null,
-                    'product_id'       => $product->id,
-                    'quantity'         => 1,
-                    'subtotal'         => $summary['subtotal_bdt'],
-                    'discount_amount'  => $summary['discount_bdt'],
-                    'coupon_id'        => $summary['coupon']?->id,
-                    'coupon_code'      => $summary['coupon_code'],
-                    'delivery_charge'  => $deliveryCharge,
-                    'total_amount'     => 0,
-                    'currency'         => 'BDT',
-                    'order_type'       => $orderType,
-                    'delivery_method'  => $orderType === 'pickup' ? 'pickup' : 'self',
-                    'delivery_name'    => $request->input('delivery_name', $user->name),
-                    'delivery_phone'   => $request->input('delivery_phone', $user->phone),
-                    'delivery_address' => $request->input('delivery_address'),
-                    'delivery_city'    => $request->input('delivery_city'),
-                    'delivery_postal'  => $request->input('delivery_postal'),
-                    'delivery_note'    => $request->input('delivery_note'),
-                    'payment_status'   => 'paid',
-                ]);
-
-                $this->checkout->settle(
+                $order = $this->orderService->createFromCart(
                     $user,
-                    $product,
+                    'bkash',
+                    null,
+                    [
+                        'order_type'       => $orderType,
+                        'delivery_method'  => $orderType === 'pickup' ? 'pickup' : 'self',
+                        'delivery_name'    => $request->input('delivery_name', $user->name),
+                        'delivery_phone'   => $request->input('delivery_phone', $user->phone),
+                        'delivery_address' => $request->input('delivery_address'),
+                        'delivery_city'    => $request->input('delivery_city'),
+                        'delivery_postal'  => $request->input('delivery_postal'),
+                        'delivery_note'    => $request->input('delivery_note'),
+                    ],
+                    'paid',
+                    $deliveryCharge,
+                    $summary['discount_bdt'],
+                    $summary['coupon']?->id,
+                    $summary['coupon_code']
+                );
+
+                $this->orderService->settleCart(
+                    $user,
+                    $order,
                     $summary['coupon'],
                     $summary['discount_bdt'],
                     $summary['balance_used_bdt'],
-                    0,
-                    $orderRef
+                    0
                 );
+
+                return redirect()->route('my-orders.show', $order)
+                    ->with('success', 'Order placed!');
             } catch (\Throwable $e) {
                 Log::error('bKash wallet-pay failed: ' . $e->getMessage());
                 return back()->with('error', 'Could not complete order: ' . $e->getMessage());
             }
-
-            return redirect()->route('my-orders.show', $order)
-                ->with('success', 'Order placed! Order # ' . $order->order_number);
         }
 
-        // ── 6. Otherwise send to bKash gateway ──
         $invoiceNumber = 'INV-' . strtoupper(uniqid());
-
         $result = $this->bkash->createPayment($finalTotal, $invoiceNumber);
 
         if (isset($result['error']) || ! isset($result['bkashURL'])) {
@@ -137,10 +124,9 @@ class BkashController extends Controller
             return back()->with('error', 'Payment could not be created. Please try again.');
         }
 
-        // ── 7. Save transaction with delivery context in raw_response ──
         BkashTransaction::create([
             'user_id'         => $user->id,
-            'product_id'      => $product->id,
+            'product_id'      => null,
             'coupon_id'       => $summary['coupon']?->id,
             'payment_id'      => $result['paymentID'],
             'invoice_number'  => $invoiceNumber,
@@ -159,10 +145,10 @@ class BkashController extends Controller
                 'delivery_note'    => $request->input('delivery_note'),
                 'delivery_charge'  => $deliveryCharge,
                 'subtotal'         => $summary['subtotal_bdt'],
+                'balance_used'     => $summary['balance_used_bdt'],
             ]),
         ]);
 
-        // ── 8. Redirect to bKash ──
         return redirect()->away($result['bkashURL']);
     }
 
@@ -173,7 +159,6 @@ class BkashController extends Controller
 
         $transaction = BkashTransaction::where('payment_id', $paymentId)->first();
 
-        // ── Failed / cancel ──
         if ($status !== 'success' || ! $paymentId) {
             $transaction?->update([
                 'status'             => $status === 'cancel' ? 'cancelled' : 'failed',
@@ -188,61 +173,50 @@ class BkashController extends Controller
             ]);
         }
 
-        // ── Execute payment ──
         $result  = $this->bkash->executePayment($paymentId);
         $success = ($result['transactionStatus'] ?? null) === 'Completed';
 
-        // ── Success: create order + settle ──
         if ($success && $transaction && $transaction->status !== 'success') {
             try {
                 $raw  = $transaction->raw_response ?? [];
                 $user = $transaction->user;
 
-                // Create order
-                $order = $this->orderService->createFromTransaction([
-                    'user_id'          => $user->id,
-                    'source_type'      => 'bkash',
-                    'source_id'        => $transaction->id,
-                    'product_id'       => $transaction->product_id,
-                    'quantity'         => 1,
-                    'subtotal'         => (float) ($raw['subtotal'] ?? ($transaction->amount + $transaction->discount_amount)),
-                    'discount_amount'  => (float) $transaction->discount_amount,
-                    'coupon_id'        => $transaction->coupon_id,
-                    'coupon_code'      => $transaction->coupon?->code,
-                    'delivery_charge'  => (float) ($raw['delivery_charge'] ?? 0),
-                    'total_amount'     => (float) $transaction->amount,
-                    'currency'         => 'BDT',
-                    'order_type'       => $raw['order_type'] ?? 'delivery',
-                    'delivery_method'  => ($raw['order_type'] ?? 'delivery') === 'pickup' ? 'pickup' : 'self',
-                    'delivery_name'    => $raw['delivery_name'] ?? $user->name,
-                    'delivery_phone'   => $raw['delivery_phone'] ?? $user->phone,
-                    'delivery_address' => $raw['delivery_address'] ?? null,
-                    'delivery_city'    => $raw['delivery_city'] ?? null,
-                    'delivery_postal'  => $raw['delivery_postal'] ?? null,
-                    'delivery_note'    => $raw['delivery_note'] ?? null,
-                    'payment_status'   => 'paid',
-                ]);
-
-                // Settle stock + coupon + balance
-                $this->checkout->settle(
+                $order = $this->orderService->createFromCart(
                     $user,
-                    $transaction->product,
-                    $transaction->coupon,
+                    'bkash',
+                    $transaction->id,
+                    [
+                        'order_type'       => $raw['order_type'] ?? 'delivery',
+                        'delivery_method'  => ($raw['order_type'] ?? 'delivery') === 'pickup' ? 'pickup' : 'self',
+                        'delivery_name'    => $raw['delivery_name'] ?? $user->name,
+                        'delivery_phone'   => $raw['delivery_phone'] ?? $user->phone,
+                        'delivery_address' => $raw['delivery_address'] ?? null,
+                        'delivery_city'    => $raw['delivery_city'] ?? null,
+                        'delivery_postal'  => $raw['delivery_postal'] ?? null,
+                        'delivery_note'    => $raw['delivery_note'] ?? null,
+                    ],
+                    'paid',
+                    (float) ($raw['delivery_charge'] ?? 0),
                     (float) $transaction->discount_amount,
-                    0,
-                    0,
-                    $transaction->invoice_number
+                    $transaction->coupon_id,
+                    $transaction->coupon?->code
                 );
 
-                // Link order to transaction
-                $transaction->order_id = $order->id;
-                $transaction->save();
+                $this->orderService->settleCart(
+                    $user,
+                    $order,
+                    $transaction->coupon,
+                    (float) $transaction->discount_amount,
+                    (float) ($raw['balance_used'] ?? 0),
+                    0
+                );
+
+                $transaction->update(['order_id' => $order->id]);
             } catch (\Throwable $e) {
                 Log::error('bKash order create failed: ' . $e->getMessage());
             }
         }
 
-        // ── Update transaction ──
         $transaction?->update([
             'status'             => $success ? 'success' : 'failed',
             'trx_id'             => $result['trxID'] ?? null,
@@ -251,13 +225,12 @@ class BkashController extends Controller
             'raw_response'       => array_merge($transaction->raw_response ?? [], $result),
         ]);
 
-        // ── Mail receipt ──
         if ($success && $transaction?->customer_email) {
             try {
                 Mail::to($transaction->customer_email)
                     ->send(new PaymentReceiptMail($transaction, 'bKash', $transaction->trx_id));
             } catch (\Throwable $e) {
-                Log::error('bKash receipt mail failed: ' . $e->getMessage());
+                Log::error('Mail failed: ' . $e->getMessage());
             }
         }
 

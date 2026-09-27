@@ -14,19 +14,42 @@ class Order extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'order_number', 'delivery_code',
-        'delivery_code_expires_at', 'delivery_code_used_at', 'delivery_code_attempts',
-        'source_type', 'source_id',
-        'product_id', 'product_name', 'quantity',
-        'subtotal', 'discount_amount', 'coupon_id', 'coupon_code',
-        'delivery_charge', 'total_amount', 'currency',
-        'order_type', 'delivery_method',
-        'delivery_name', 'delivery_phone', 'delivery_address',
-        'delivery_city', 'delivery_postal', 'delivery_note',
-        'assigned_to', 'vendor_id', 'tracking_number',
-        'status', 'payment_status',
-        'confirmed_at', 'shipped_at', 'delivered_at',
-        'cancelled_at', 'returned_at',
+        'user_id',
+        'order_number',
+        'delivery_code',
+        'delivery_code_expires_at',
+        'delivery_code_used_at',
+        'delivery_code_attempts',
+        'source_type',
+        'source_id',
+        'product_id',
+        'product_name',
+        'quantity',
+        'subtotal',
+        'discount_amount',
+        'coupon_id',
+        'coupon_code',
+        'delivery_charge',
+        'total_amount',
+        'currency',
+        'order_type',
+        'delivery_method',
+        'delivery_name',
+        'delivery_phone',
+        'delivery_address',
+        'delivery_city',
+        'delivery_postal',
+        'delivery_note',
+        'assigned_to',
+        'vendor_id',
+        'tracking_number',
+        'status',
+        'payment_status',
+        'confirmed_at',
+        'shipped_at',
+        'delivered_at',
+        'cancelled_at',
+        'returned_at',
         'admin_note',
     ];
 
@@ -45,30 +68,74 @@ class Order extends Model
     ];
 
     // ── Relations ──
-    public function user()            { return $this->belongsTo(User::class); }
-    public function product()         { return $this->belongsTo(Product::class); }
-    public function coupon()          { return $this->belongsTo(Coupon::class); }
-    public function deliveryMan()     { return $this->belongsTo(User::class, 'assigned_to'); }
-    public function vendor()          { return $this->belongsTo(User::class, 'vendor_id'); }
-    public function statusLogs()      { return $this->hasMany(DeliveryStatusLog::class)->latest(); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+    public function deliveryMan()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+    public function vendor()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
+    }
+    public function statusLogs()
+    {
+        return $this->hasMany(DeliveryStatusLog::class)->latest();
+    }
 
     // ── Scopes ──
-    public function scopeDelivery($q)          { return $q->where('order_type', 'delivery'); }
-    public function scopePickup($q)            { return $q->where('order_type', 'pickup'); }
-    public function scopeStatus($q, $status)   { return $q->where('status', $status); }
-    public function scopeForDeliveryMan($q, $userId) {
+    public function scopeDelivery($q)
+    {
+        return $q->where('order_type', 'delivery');
+    }
+    public function scopePickup($q)
+    {
+        return $q->where('order_type', 'pickup');
+    }
+    public function scopeStatus($q, $status)
+    {
+        return $q->where('status', $status);
+    }
+    public function scopeForDeliveryMan($q, $userId)
+    {
         return $q->where('assigned_to', $userId);
     }
-    public function scopeForVendor($q, $userId) {
+    public function scopeForVendor($q, $userId)
+    {
         return $q->where('vendor_id', $userId);
     }
 
     // ── Helpers ──
-    public function isPickup(): bool      { return $this->order_type === 'pickup'; }
-    public function isDelivered(): bool   { return $this->status === 'delivered'; }
-    public function isPickedUp(): bool    { return $this->status === 'picked_up'; }
-    public function isCancelled(): bool   { return $this->status === 'cancelled'; }
-    public function isPaid(): bool        { return $this->payment_status === 'paid'; }
+    public function isPickup(): bool
+    {
+        return $this->order_type === 'pickup';
+    }
+    public function isDelivered(): bool
+    {
+        return $this->status === 'delivered';
+    }
+    public function isPickedUp(): bool
+    {
+        return $this->status === 'picked_up';
+    }
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+    public function isPaid(): bool
+    {
+        return $this->payment_status === 'paid';
+    }
 
     public function isDeliveryCodeExpired(): bool
     {
@@ -93,5 +160,10 @@ class Order extends Model
             'returned'         => ['label' => 'Returned',         'color' => '#fb923c'],
             default            => ['label' => ucfirst($this->status), 'color' => '#94a3b8'],
         };
+    }
+
+    public function items()
+    {
+        return $this->hasMany(OrderItem::class);
     }
 }

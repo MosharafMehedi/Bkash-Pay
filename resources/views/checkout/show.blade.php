@@ -452,7 +452,6 @@
                         </div>
                     </div>
 
-                    {{-- ══ RIGHT: Order summary (sticky) ══ --}}
                     <aside class="co-aside">
                         <div class="co-panel">
                             <div class="co-panel-title">
@@ -565,7 +564,7 @@
         const csrfToken           = @json(csrf_token());
 
         const SUBTOTAL_BDT = @json((float) $subtotal);
-        const USD_RATE     = @json((float) $usdRate);   // 1 USD = X BDT
+        const USD_RATE     = @json((float) $usdRate);
 
         const form           = document.getElementById('checkout-form');
         const submitBtn      = document.getElementById('submitBtn');
@@ -593,9 +592,9 @@
         const pickupInfo     = document.getElementById('pickupInfo');
         const citySelect     = document.getElementById('citySelect');
 
-        let appliedCoupon         = null;      // { code, discount (BDT) }
+        let appliedCoupon         = null;
         let currentMethod         = 'bkash';
-        let currentDeliveryCharge = 0;         // always BDT
+        let currentDeliveryCharge = 0;
         let currentOrderType      = 'delivery';
         let chargeRequestId       = 0;
 
@@ -628,7 +627,6 @@
                 discountHidden.value      = '0';
             }
 
-            // Delivery row
             if (deliveryBdt > 0) {
                 deliveryChargeRow.style.display = '';
                 deliveryChargeAmt.textContent   = fmt(conv(deliveryBdt));
@@ -639,10 +637,9 @@
                 deliveryChargeRow.style.display = 'none';
             }
 
-            deliveryChargeHidden.value = deliveryBdt; // BDT, for the server
+            deliveryChargeHidden.value = deliveryBdt;
         }
 
-        // ── Payment method ──
         function applyMethod(radio) {
             document.querySelectorAll('.co-method').forEach((el) => el.classList.remove('selected'));
             radio.closest('.co-method').classList.add('selected');
@@ -652,7 +649,6 @@
         }
         methodRadios.forEach((r) => r.addEventListener('change', () => applyMethod(r)));
 
-        // ── Order type ──
         function setRequired(on) {
             ['delivery_name', 'delivery_phone', 'delivery_city', 'delivery_address'].forEach((n) => {
                 const el = form.elements[n];
@@ -684,7 +680,6 @@
             radio.addEventListener('change', () => applyOrderType(radio.value));
         });
 
-        // ── Delivery charge (always calculated in BDT) ──
         function fetchDeliveryCharge() {
             const city = citySelect ? citySelect.value : '';
             if (!city) {
@@ -713,7 +708,6 @@
 
         if (citySelect) citySelect.addEventListener('change', fetchDeliveryCharge);
 
-        // ── Coupon ──
         function setMsg(type, text) {
             couponMsg.className   = 'co-coupon-msg' + (type ? ' ' + type : '');
             couponMsg.textContent = text || '';
@@ -784,15 +778,13 @@
             updateTotals();
         });
 
-        // ── Prevent double submit ──
         form.addEventListener('submit', () => {
             submitBtn.disabled = true;
         });
         window.addEventListener('pageshow', () => {
-            submitBtn.disabled = false; // back button / bfcache
+            submitBtn.disabled = false;
         });
 
-        // ── Init ──
         const checkedMethod = document.querySelector('input[name="method"]:checked');
         if (checkedMethod) applyMethod(checkedMethod);
 

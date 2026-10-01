@@ -1,4 +1,5 @@
-<aside class="app-sidebar w-[260px] lg:sticky lg:top-0 h-screen flex flex-col z-40" :class="sidebarOpen ? 'open' : ''">
+<aside class="app-sidebar fixed top-0 left-0 h-screen w-[260px] flex flex-col z-40 transition-transform duration-300"
+       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
     <!-- Logo — role-based home -->
     @php
@@ -12,13 +13,11 @@
         }
     @endphp
 
-    <div class="flex items-center justify-between h-16 px-5 border-b border-white/5">
+    <div class="flex items-center justify-between h-16 px-5 border-b border-white/5 flex-shrink-0">
         <a href="{{ route($homeRoute) }}" class="flex items-center gap-2">
-            <div
-                class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
             </div>
             <span class="text-lg font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
@@ -32,8 +31,8 @@
         </button>
     </div>
 
-    <!-- Menu -->
-    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+    <!-- Menu (scrollable) -->
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scroll">
 
         {{-- ═══════════ MAIN (user / admin only) ═══════════ --}}
         @unlessrole('delivery_man|vendor')
@@ -130,6 +129,7 @@
                     <span>Delivery Charges</span>
                 </a>
             @endcan
+
             @can('review.view')
                 <a href="{{ route('admin.reviews.index') }}"
                     class="sidebar-link {{ request()->routeIs('admin.reviews.*') ? 'active' : '' }}">
@@ -216,13 +216,18 @@
         </a>
     </nav>
 
-    <!-- User Card -->
-    <div class="p-4 border-t border-white/5">
+    <!-- User Card (fixed bottom) -->
+    <div class="p-4 border-t border-white/5 flex-shrink-0">
         <div class="flex items-center gap-3">
-            <div
-                class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
-                {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+            @if (auth()->user()->hasAvatar())
+    <img src="{{ auth()->user()->avatar_url }}"
+         alt="{{ auth()->user()->name }}"
+         class="w-9 h-9 rounded-full object-cover border-2 border-cyan-500/30">
+        @else
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
+                {{ auth()->user()->initials }}
             </div>
+        @endif
             <div class="flex-1 min-w-0">
                 <p class="text-sm font-semibold text-slate-200 truncate">{{ auth()->user()->name ?? 'Guest' }}</p>
                 <p class="text-xs text-slate-500 truncate">

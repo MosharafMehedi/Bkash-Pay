@@ -20,6 +20,7 @@ class User extends Authenticatable
         'city',
         'postal_code',
         'status',
+        'avatar',
     ];
 
     protected $hidden = [
@@ -65,5 +66,42 @@ class User extends Authenticatable
     public function reviewReplies()
     {
         return $this->hasMany(ReviewReply::class);
+    }
+
+    /**
+     * Get avatar URL or default.
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        if ($this->avatar && \Storage::disk('public')->exists($this->avatar)) {
+            return \Storage::disk('public')->url($this->avatar);
+        }
+
+        return '';
+    }
+
+    /**
+     * Check if user has avatar.
+     */
+    public function hasAvatar(): bool
+    {
+        return ! empty($this->avatar)
+            && \Storage::disk('public')->exists($this->avatar);
+    }
+
+    /**
+     * Get initials for default avatar.
+     */
+    public function getInitialsAttribute(): string
+    {
+        $names = explode(' ', trim($this->name ?? 'User'));
+        $initials = '';
+
+        foreach ($names as $name) {
+            $initials .= strtoupper(substr($name, 0, 1));
+            if (strlen($initials) >= 2) break;
+        }
+
+        return $initials ?: 'U';
     }
 }

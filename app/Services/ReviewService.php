@@ -238,8 +238,7 @@ class ReviewService
             return false;
         }
 
-        // User must be active
-        if (! $user->is_active) {
+        if ($user->status != 1) {
             return false;
         }
 

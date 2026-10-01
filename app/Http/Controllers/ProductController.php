@@ -12,8 +12,7 @@ class ProductController extends Controller
     public function __construct(
         protected CheckoutService $checkout,
         protected OrderService $orderService,
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -40,12 +39,11 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        // Only active products visible to public
         if (! $product->is_active) {
             abort(404);
         }
 
-        // Related products — same category, exclude current, max 4
+        // Related products
         $relatedProducts = collect();
 
         if ($product->category) {
@@ -58,10 +56,8 @@ class ProductController extends Controller
                 ->get();
         }
 
-        // If not enough, fill with random
         if ($relatedProducts->count() < 4) {
             $needed = 4 - $relatedProducts->count();
-
             $extra = Product::active()
                 ->where('id', '!=', $product->id)
                 ->whereNotIn('id', $relatedProducts->pluck('id'))
@@ -73,7 +69,31 @@ class ProductController extends Controller
             $relatedProducts = $relatedProducts->merge($extra);
         }
 
-        return view('products.show', compact('product', 'relatedProducts'));
+        // ═══ Reviews ═══
+        $reviewService = app(\App\Services\ReviewService::class);
+
+        $filters = [
+            'rating' => request('rating'),
+            'sort'   => request('sort', 'newest'),
+        ];
+
+        $reviews          = $reviewService->getReviews($product, $filters, 10);
+        $ratingBreakdown  = $reviewService->getRatingBreakdown($product);
+        $userReview       = auth()->check()
+            ? $reviewService->getUserReview(auth()->user(), $product)
+            : null;
+        $canReview        = auth()->check()
+            && $reviewService->canReview(auth()->user(), $product)
+            && ! $userReview;
+
+        return view('products.show', compact(
+            'product',
+            'relatedProducts',
+            'reviews',
+            'ratingBreakdown',
+            'userReview',
+            'canReview'
+        ));
     }
 
     /**

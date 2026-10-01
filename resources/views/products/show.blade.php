@@ -196,7 +196,7 @@
         .pd-qty button:hover:not(:disabled) { background: rgba(41,231,255,0.1); color: var(--cyan); }
         .pd-qty button:disabled { opacity: 0.3; cursor: not-allowed; }
         .pd-qty input {
-            height: 46px;
+            width: 44px; height: 46px;
             text-align: center; background: none; border: none;
             color: var(--text-hi); font-family: 'Sora', sans-serif;
             font-size: 0.95rem; font-weight: 700; outline: none;
@@ -282,7 +282,487 @@
             font-size: 0.95rem; color: var(--cyan);
         }
 
-        /* ── Toast + spinner ── */
+        /* ═══════════ REVIEWS SECTION ═══════════ */
+        .pdr-section {
+            margin-top: 3rem;
+            padding-top: 3rem;
+            border-top: 1px solid var(--glass-border);
+        }
+        .pdr-header {
+            margin-bottom: 1.5rem;
+        }
+        .pdr-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-hi);
+            margin-bottom: 0.4rem;
+        }
+        .pdr-summary {
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.9rem; color: var(--text-mu);
+        }
+        .pdr-avg {
+            font-family: 'Sora', sans-serif; font-weight: 700;
+            font-size: 1.15rem; color: var(--text-hi);
+        }
+        .pdr-stars { color: #fbbf24; letter-spacing: 0.05em; }
+        .pdr-count { font-size: 0.85rem; }
+
+        .pdr-alert {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.7rem 1rem; margin-bottom: 1rem;
+            border-radius: 0.7rem; font-size: 0.82rem; font-weight: 500;
+        }
+        .pdr-alert.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #6ee7b7; }
+        .pdr-alert.error   { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.3);  color: #fca5a5; }
+
+        .pdr-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        @media (max-width: 900px) { .pdr-layout { grid-template-columns: 1fr; } }
+
+        .pdr-left { display: flex; flex-direction: column; gap: 1.25rem; }
+
+        /* Rating breakdown */
+        .pdr-breakdown {
+            padding: 1.15rem 1.25rem;
+            border-radius: 0.95rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px);
+        }
+        .pdr-breakdown-title {
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--cyan); margin-bottom: 0.85rem;
+        }
+        .pdr-bar-row {
+            display: flex; align-items: center; gap: 0.6rem;
+            margin-bottom: 0.5rem;
+        }
+        .pdr-bar-row:last-child { margin-bottom: 0; }
+        .pdr-bar-star {
+            font-size: 0.78rem; font-weight: 600; color: var(--text-mu);
+            width: 26px; flex-shrink: 0;
+        }
+        .pdr-bar-track {
+            flex: 1; height: 6px; border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+        .pdr-bar-fill {
+            height: 100%; border-radius: 999px;
+            background: linear-gradient(90deg, var(--cyan), var(--violet));
+            transition: width 0.4s ease;
+        }
+        .pdr-bar-count {
+            font-size: 0.72rem; color: var(--text-mu);
+            width: 24px; text-align: right; flex-shrink: 0;
+        }
+
+        /* Review form */
+        .pdr-form-card {
+            padding: 1.35rem 1.25rem;
+            border-radius: 0.95rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px);
+        }
+        .pdr-form-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1rem; font-weight: 700; color: var(--text-hi);
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .pdr-field { margin-bottom: 0.9rem; }
+        .pdr-field label.pdr-label {
+            display: block; font-size: 0.75rem; font-weight: 600;
+            color: #cbd5e1; margin-bottom: 0.35rem;
+        }
+        .pdr-field .req { color: #f87171; }
+        .pdr-field input,
+        .pdr-field textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 0.6rem;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.85rem; color: var(--text-hi);
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        .pdr-field input:focus,
+        .pdr-field textarea:focus { border-color: rgba(41,231,255,0.55); }
+        .pdr-field textarea { resize: vertical; min-height: 70px; }
+        .pdr-field input::placeholder,
+        .pdr-field textarea::placeholder { color: var(--text-mu); }
+        .pdr-error {
+            font-size: 0.7rem; color: #f87171; margin-top: 0.3rem;
+        }
+
+        /* Star selector */
+        .pdr-star-input { display: flex; gap: 0.3rem; }
+        .pdr-star {
+            background: none; border: none; padding: 0;
+            font-size: 1.6rem; line-height: 1;
+            color: rgba(255,255,255,0.15);
+            cursor: pointer;
+            transition: color 0.15s, transform 0.15s;
+        }
+        .pdr-star:hover,
+        .pdr-star.hover { transform: scale(1.15); color: #fbbf24; }
+        .pdr-star.active { color: #fbbf24; }
+
+        /* Form buttons */
+        .pdr-form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .pdr-submit {
+            flex: 1;
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.7rem;
+            font-family: 'Sora', sans-serif; font-weight: 700; font-size: 0.88rem;
+            color: #06050c;
+            background: linear-gradient(135deg, var(--cyan), var(--violet));
+            box-shadow: 0 10px 28px -10px rgba(41,231,255,0.65);
+            border: none; cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+        }
+        .pdr-submit:hover { transform: translateY(-1px); filter: brightness(1.08); }
+        .pdr-cancel {
+            padding: 0.75rem 1.15rem;
+            border-radius: 0.7rem;
+            font-size: 0.85rem; font-weight: 600;
+            color: var(--text-mu);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+        }
+
+        /* Reviewed notice */
+        .pdr-reviewed-notice {
+            display: flex; align-items: center; gap: 0.85rem;
+            padding: 1.1rem;
+            border-radius: 0.95rem;
+            background: rgba(52,211,153,0.06);
+            border: 1px solid rgba(52,211,153,0.28);
+        }
+        .pdr-reviewed-icon {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: rgba(52,211,153,0.15);
+            border: 2px solid rgba(52,211,153,0.4);
+            color: #34d399;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .pdr-reviewed-title { font-weight: 700; color: #6ee7b7; font-size: 0.88rem; }
+        .pdr-reviewed-sub { font-size: 0.72rem; color: var(--text-mu); margin-top: 0.1rem; }
+        .pdr-btn-edit {
+            margin-left: auto;
+            padding: 0.4rem 0.85rem;
+            border-radius: 0.55rem;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--cyan);
+            background: rgba(41,231,255,0.1);
+            border: 1px solid rgba(41,231,255,0.3);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .pdr-btn-edit:hover { background: rgba(41,231,255,0.2); }
+
+        /* Login notice */
+        .pdr-notice {
+            display: flex; align-items: center; gap: 0.85rem;
+            padding: 1.1rem;
+            border-radius: 0.95rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px);
+        }
+        .pdr-notice-icon {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: rgba(41,231,255,0.12);
+            border: 2px solid rgba(41,231,255,0.3);
+            color: var(--cyan);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .pdr-notice-title {
+            font-size: 0.85rem; font-weight: 600; color: var(--text-hi);
+            margin-bottom: 0.4rem;
+        }
+        .pdr-notice-btn {
+            display: inline-flex; align-items: center;
+            padding: 0.5rem 0.9rem;
+            border-radius: 0.55rem;
+            font-size: 0.78rem; font-weight: 600;
+            color: #06050c;
+            background: linear-gradient(135deg, var(--cyan), var(--violet));
+            text-decoration: none;
+        }
+
+        /* Filters */
+        .pdr-filters {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 1.15rem; flex-wrap: wrap;
+        }
+        .pdr-filter-tabs { display: flex; gap: 0.35rem; flex-wrap: wrap; flex: 1; }
+        .pdr-filter-tab {
+            padding: 0.4rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--text-mu);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            text-decoration: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .pdr-filter-tab:hover { color: var(--text-hi); border-color: rgba(41,231,255,0.4); }
+        .pdr-filter-tab.active {
+            color: var(--cyan);
+            background: rgba(41,231,255,0.1);
+            border-color: rgba(41,231,255,0.5);
+        }
+        .pdr-sort-select {
+            padding: 0.4rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-hi);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            outline: none;
+            cursor: pointer;
+        }
+        .pdr-sort-select option { background: #111827; }
+
+        /* Review card */
+        .pdr-card {
+            padding: 1.25rem;
+            border-radius: 0.95rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px);
+            margin-bottom: 1rem;
+        }
+        .pdr-card:last-child { margin-bottom: 0; }
+
+        .pdr-card-head {
+            display: flex; align-items: flex-start; gap: 0.85rem;
+            margin-bottom: 0.85rem;
+        }
+        .pdr-avatar {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(41,231,255,0.25), rgba(167,139,250,0.25));
+            border: 1px solid rgba(41,231,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Sora', sans-serif; font-weight: 700;
+            color: var(--cyan); font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .pdr-card-info { flex: 1; min-width: 0; }
+        .pdr-card-name {
+            font-size: 0.9rem; font-weight: 700; color: var(--text-hi);
+            margin-bottom: 0.25rem;
+            display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+        }
+        .pdr-card-meta {
+            display: flex; align-items: center; gap: 0.4rem;
+            font-size: 0.72rem; color: var(--text-mu);
+        }
+        .pdr-stars-sm { color: #fbbf24; letter-spacing: 0.03em; font-size: 0.85rem; }
+        .pdr-edited { font-style: italic; }
+
+        .pdr-badge {
+            display: inline-flex; align-items: center; gap: 0.25rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.62rem; font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        .pdr-badge.verified {
+            background: rgba(52,211,153,0.12);
+            color: #34d399;
+            border: 1px solid rgba(52,211,153,0.28);
+        }
+        .pdr-badge.you {
+            background: rgba(41,231,255,0.12);
+            color: var(--cyan);
+            border: 1px solid rgba(41,231,255,0.28);
+        }
+        .pdr-badge.admin {
+            background: rgba(167,139,250,0.15);
+            color: var(--violet);
+            border: 1px solid rgba(167,139,250,0.3);
+        }
+
+        .pdr-card-actions { display: flex; gap: 0.35rem; }
+        .pdr-icon-btn {
+            width: 30px; height: 30px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 0.45rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            color: var(--text-mu);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .pdr-icon-btn:hover { color: var(--cyan); border-color: rgba(41,231,255,0.4); background: rgba(41,231,255,0.08); }
+        .pdr-icon-btn.danger:hover { color: #f87171; border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.08); }
+        .pdr-icon-btn.sm { width: 26px; height: 26px; }
+
+        .pdr-card-body { margin-top: 0.5rem; }
+        .pdr-review-title {
+            font-size: 0.9rem; font-weight: 600; color: var(--text-hi);
+            margin-bottom: 0.35rem;
+        }
+        .pdr-review-comment {
+            font-size: 0.85rem; color: #cbd5e1;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        /* Replies */
+        .pdr-replies {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--glass-border);
+        }
+        .pdr-reply { display: flex; gap: 0.75rem; margin-bottom: 0.85rem; }
+        .pdr-reply:last-child { margin-bottom: 0; }
+        .pdr-reply-line {
+            width: 2px;
+            background: linear-gradient(180deg, rgba(41,231,255,0.4), transparent);
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .pdr-reply-body { flex: 1; }
+        .pdr-reply-head {
+            display: flex; align-items: center; gap: 0.6rem;
+            margin-bottom: 0.5rem;
+        }
+        .pdr-reply-avatar {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: 700;
+            color: var(--text-hi);
+            flex-shrink: 0;
+        }
+        .pdr-reply-avatar.admin {
+            background: rgba(167,139,250,0.15);
+            border-color: rgba(167,139,250,0.35);
+        }
+        .pdr-reply-info { flex: 1; min-width: 0; }
+        .pdr-reply-name {
+            font-size: 0.8rem; font-weight: 600; color: var(--text-hi);
+            display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+        }
+        .pdr-reply-meta {
+            font-size: 0.68rem; color: var(--text-mu);
+            display: flex; align-items: center; gap: 0.3rem;
+            margin-top: 0.1rem;
+        }
+        .pdr-reply-comment {
+            font-size: 0.82rem; color: #cbd5e1;
+            line-height: 1.55;
+            padding-left: 2.3rem;
+            white-space: pre-wrap;
+        }
+
+        /* Reply form */
+        .pdr-reply-form-wrap {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--glass-border);
+        }
+        .pdr-reply-form { display: flex; gap: 0.5rem; align-items: center; }
+        .pdr-reply-form input {
+            flex: 1;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 0.6rem;
+            padding: 0.55rem 0.8rem;
+            font-size: 0.82rem; color: var(--text-hi);
+            outline: none;
+            font-family: inherit;
+        }
+        .pdr-reply-form input:focus { border-color: rgba(41,231,255,0.55); }
+        .pdr-reply-form button[type="submit"] {
+            padding: 0.55rem 1rem;
+            border-radius: 0.6rem;
+            font-size: 0.78rem; font-weight: 600;
+            color: #06050c;
+            background: linear-gradient(135deg, var(--cyan), var(--violet));
+            border: none; cursor: pointer;
+            white-space: nowrap;
+        }
+        .pdr-cancel-sm {
+            padding: 0.55rem 0.85rem;
+            border-radius: 0.6rem;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--text-mu);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+        }
+        .pdr-reply-trigger {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            margin-top: 0.85rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--text-mu);
+            background: none;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .pdr-reply-trigger:hover {
+            color: var(--cyan);
+            border-color: rgba(41,231,255,0.4);
+            background: rgba(41,231,255,0.06);
+        }
+
+        /* Empty state */
+        .pdr-empty {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            border-radius: 0.95rem;
+            background: var(--glass);
+            border: 1px dashed var(--glass-border);
+        }
+        .pdr-empty-icon {
+            width: 72px; height: 72px;
+            margin: 0 auto 0.85rem;
+            border-radius: 50%;
+            background: rgba(41,231,255,0.08);
+            border: 2px dashed rgba(41,231,255,0.3);
+            color: var(--cyan);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .pdr-empty-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1rem; font-weight: 700; color: var(--text-hi);
+            margin-bottom: 0.35rem;
+        }
+        .pdr-empty-sub { font-size: 0.82rem; color: var(--text-mu); }
+
+        /* Pagination */
+        .pdr-pagination { margin-top: 1.25rem; }
+
+        /* Toast + spinner */
         @keyframes spin {
             from { transform: rotate(0deg); }
             to   { transform: rotate(360deg); }
@@ -382,7 +862,9 @@
                 <div class="pd-rating">
                     <span class="stars">{{ $stars }}</span>
                     <span class="num">{{ number_format($rating, 1) }}</span>
-                    <span>· {{ $product->review_count ?? 0 }} reviews</span>
+                    <a href="#reviews" style="color:var(--text-mu); text-decoration:underline;">
+                        · {{ $product->review_count ?? 0 }} reviews
+                    </a>
                 </div>
 
                 {{-- Price --}}
@@ -429,12 +911,12 @@
                         </div>
                     @endif
                     <div class="pd-spec">
-                        <span class="pd-spec-label">Quantity Available</span>
-                        <span class="pd-spec-value">{{ $product->stock }} unit</span>
+                        <span class="pd-spec-label">Available</span>
+                        <span class="pd-spec-value">{{ $product->stock }} units</span>
                     </div>
                 </div>
 
-                {{-- Stock badge --}}
+                {{-- Stock --}}
                 @php
                     $stock = (int) $product->stock;
                     if ($stock <= 0) {
@@ -451,17 +933,15 @@
                     <span class="pd-stock {{ $stockClass }}">{{ $stockText }}</span>
                 </div>
 
-                {{-- ═══ Actions ═══ --}}
+                {{-- Actions --}}
                 @if ($stock > 0)
                     <div class="pd-actions">
-                        {{-- Quantity --}}
                         <div class="pd-qty">
                             <button type="button" id="qtyMinus">−</button>
                             <input type="number" id="qtyInput" value="1" min="1" max="{{ $maxQty }}" readonly>
                             <button type="button" id="qtyPlus">+</button>
                         </div>
 
-                        {{-- Add to Cart --}}
                         <button type="button" class="pd-btn pd-btn-cart" id="addToCartBtn">
                             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -470,7 +950,6 @@
                             Add to Cart
                         </button>
 
-                        {{-- Buy Now --}}
                         <button type="button" class="pd-btn pd-btn-buy" id="buyNowBtn">
                             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"
@@ -487,7 +966,7 @@
                     </div>
                 @endif
 
-                {{-- Trust badges --}}
+                {{-- Trust --}}
                 <div class="pd-trust">
                     <span class="pd-trust-item">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -545,6 +1024,9 @@
                 </div>
             </div>
         @endif
+
+        {{-- ═══ Reviews Section ═══ --}}
+        @include('products.partials._reviews')
 
     </div>
 
@@ -630,7 +1112,6 @@
             }, 3000);
         }
 
-        // ── Update header badge ──
         function updateCartBadge(count) {
             const badge   = document.getElementById('cartBadge');
             const countEl = document.getElementById('cartCount');
@@ -644,7 +1125,6 @@
             }
         }
 
-        // ── Button loading ──
         function setBtnLoading(btn, loading, text = 'Loading...') {
             if (! btn) return;
             if (loading) {
@@ -657,7 +1137,6 @@
             }
         }
 
-        // ── Add to cart ──
         async function addToCart(redirectToCart = false) {
             const qty = parseInt(qtyInput.value) || 1;
 
@@ -698,7 +1177,6 @@
             }
         }
 
-        // ── Buttons ──
         const addBtn = document.getElementById('addToCartBtn');
         const buyBtn = document.getElementById('buyNowBtn');
 
@@ -712,6 +1190,34 @@
             setBtnLoading(buyBtn, true, 'Redirecting...');
             await addToCart(true);
         });
+
+        // ── Review star selector ──
+        const starInput   = document.getElementById('starInput');
+        const ratingInput = document.getElementById('ratingInput');
+
+        if (starInput) {
+            starInput.querySelectorAll('.pdr-star').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const value = parseInt(btn.dataset.value);
+                    ratingInput.value = value;
+
+                    starInput.querySelectorAll('.pdr-star').forEach((s) => {
+                        s.classList.toggle('active', parseInt(s.dataset.value) <= value);
+                    });
+                });
+
+                btn.addEventListener('mouseenter', () => {
+                    const hoverValue = parseInt(btn.dataset.value);
+                    starInput.querySelectorAll('.pdr-star').forEach((s) => {
+                        s.classList.toggle('hover', parseInt(s.dataset.value) <= hoverValue);
+                    });
+                });
+            });
+
+            starInput.addEventListener('mouseleave', () => {
+                starInput.querySelectorAll('.pdr-star').forEach((s) => s.classList.remove('hover'));
+            });
+        }
     })();
     </script>
 </x-app-layout>

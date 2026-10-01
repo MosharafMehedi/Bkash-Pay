@@ -135,4 +135,29 @@ class Product extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    // ── Review relations ──
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function approvedReviews()
+    {
+        return $this->hasMany(Review::class)->where('is_approved', true);
+    }
+
+    // Helper — average rating recalculate
+    public function recalculateRating(): void
+    {
+        $stats = $this->reviews()
+            ->where('is_approved', true)
+            ->selectRaw('AVG(rating) as avg_rating, COUNT(*) as total')
+            ->first();
+
+        $this->update([
+            'rating'       => round($stats->avg_rating ?? 0, 2),
+            'review_count' => $stats->total ?? 0,
+        ]);
+    }
 }

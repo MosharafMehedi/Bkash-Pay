@@ -52,9 +52,18 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class, 'vendor_id');
     }
-    // Cart relation
     public function cartItems()
     {
         return $this->hasMany(CartItem::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function reviewReplies()
+    {
+        return $this->hasMany(ReviewReply::class);
     }
 }

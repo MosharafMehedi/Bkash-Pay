@@ -19,6 +19,8 @@ use App\Http\Controllers\MyOrderController;
 use App\Http\Controllers\PayPalController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ReviewReplyController;
 use App\Http\Controllers\SslCommerzController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,14 +38,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
 
+    Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::patch('/reviews/{review}', [ReviewController::class, 'update'])->name('reviews.update');
+    Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
+
+    Route::post('/reviews/{review}/replies', [ReviewReplyController::class, 'store'])->name('replies.store');
+    Route::patch('/replies/{reply}', [ReviewReplyController::class, 'update'])->name('replies.update');
+    Route::delete('/replies/{reply}', [ReviewReplyController::class, 'destroy'])->name('replies.destroy');
+
 
     // ✅ Delivery charge AJAX — MUST be before /checkout/{product}
     Route::get('/checkout/delivery-charge', [ProductController::class, 'deliveryCharge'])
         ->name('checkout.deliveryCharge');
 
     // ✅ Checkout (cart-based)
-Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
-Route::get('/checkout/delivery-charge', [CheckoutController::class, 'deliveryCharge'])->name('checkout.deliveryCharge');
+    Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+    Route::get('/checkout/delivery-charge', [CheckoutController::class, 'deliveryCharge'])->name('checkout.deliveryCharge');
 
     // Coupon apply
     Route::post('/coupon/apply', [CouponController::class, 'apply'])->name('coupon.apply');

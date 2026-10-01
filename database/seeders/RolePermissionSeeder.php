@@ -18,23 +18,50 @@ class RolePermissionSeeder extends Seeder
         // ── Permissions (grouped by module) ──
         $permissions = [
             // Products
-            'product.view', 'product.create', 'product.edit', 'product.delete',
+            'product.view',
+            'product.create',
+            'product.edit',
+            'product.delete',
             // Coupons
-            'coupon.view', 'coupon.create', 'coupon.edit', 'coupon.delete',
+            'coupon.view',
+            'coupon.create',
+            'coupon.edit',
+            'coupon.delete',
             // Users
-            'user.view', 'user.create', 'user.edit', 'user.delete', 'user.assign-role',
+            'user.view',
+            'user.create',
+            'user.edit',
+            'user.delete',
+            'user.assign-role',
             // Roles
-            'role.view', 'role.create', 'role.edit', 'role.delete',
+            'role.view',
+            'role.create',
+            'role.edit',
+            'role.delete',
             // Permissions
-            'permission.view', 'permission.assign',
+            'permission.view',
+            'permission.assign',
             // Orders (future)
-            'order.view-all', 'order.view-own', 'order.update-status',
-            'order.assign-delivery', 'order.cancel', 'order.verify-code',
+            'order.view-all',
+            'order.view-own',
+            'order.update-status',
+            'order.assign-delivery',
+            'order.cancel',
+            'order.verify-code',
             // Delivery Charges (future)
-            'delivery-charge.view', 'delivery-charge.create',
-            'delivery-charge.edit', 'delivery-charge.delete',
+            'delivery-charge.view',
+            'delivery-charge.create',
+            'delivery-charge.edit',
+            'delivery-charge.delete',
+            // Reviews
+            'review.view',
+            'review.create',
+            'review.edit',
+            'review.delete',
+            'review.approve',
             // Dashboard
-            'dashboard.view', 'dashboard.analytics',
+            'dashboard.view',
+            'dashboard.analytics',
         ];
 
         foreach ($permissions as $permission) {

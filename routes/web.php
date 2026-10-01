@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\PermissionController as AdminPermissionController
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\ReviewController as AdminReviewController;
 use App\Http\Controllers\BkashController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CashController;
@@ -96,6 +97,13 @@ Route::middleware('auth')->group(function () {
             Route::put('/coupons/{coupon}', [AdminCouponController::class, 'update'])->name('coupons.update');
             Route::delete('/coupons/{coupon}', [AdminCouponController::class, 'destroy'])->name('coupons.destroy');
             Route::patch('/coupons/{coupon}/toggle', [AdminCouponController::class, 'toggle'])->name('coupons.toggle');
+
+            Route::get('/reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+            Route::get('/reviews/{product}', [AdminReviewController::class, 'show'])->name('reviews.show');
+            Route::delete('/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');
+            Route::patch('/reviews/{review}/approve', [AdminReviewController::class, 'approve'])->name('reviews.approve');
+            Route::patch('/reviews/{review}/reject', [AdminReviewController::class, 'reject'])->name('reviews.reject');
+            Route::delete('/replies/{reply}', [AdminReviewController::class, 'destroyReply'])->name('replies.destroy');
 
             // ═══ Orders ═══
             Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');

@@ -106,7 +106,6 @@
                 </div>
             </form>
         </div>
-
         <button type="button" class="pdr-reply-trigger"
                 onclick="document.getElementById('replyForm-{{ $review->id }}').style.display='';
                          this.style.display='none';">

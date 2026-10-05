@@ -22,6 +22,12 @@ class RolePermissionSeeder extends Seeder
             'product.create',
             'product.edit',
             'product.delete',
+
+            // Categories
+            'category.view',
+            'category.create',
+            'category.edit',
+            'category.delete',
             // Coupons
             'coupon.view',
             'coupon.create',

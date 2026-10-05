@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ReviewController as AdminReviewController;
+use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\BkashController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CashController;
@@ -35,10 +36,14 @@ Route::middleware('auth')->group(function () {
     //  USER ROUTES
     // ═══════════════════════════════════════════════════════════
 
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Products
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
 
+    // ═══ Reviews ═══
     Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::patch('/reviews/{review}', [ReviewController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
@@ -47,22 +52,20 @@ Route::middleware('auth')->group(function () {
     Route::patch('/replies/{reply}', [ReviewReplyController::class, 'update'])->name('replies.update');
     Route::delete('/replies/{reply}', [ReviewReplyController::class, 'destroy'])->name('replies.destroy');
 
-
-    // ✅ Delivery charge AJAX — MUST be before /checkout/{product}
-    Route::get('/checkout/delivery-charge', [ProductController::class, 'deliveryCharge'])
+    // ═══ Checkout ═══
+    Route::get('/checkout/delivery-charge', [CheckoutController::class, 'deliveryCharge'])
         ->name('checkout.deliveryCharge');
 
-    // ✅ Checkout (cart-based)
     Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
-    Route::get('/checkout/delivery-charge', [CheckoutController::class, 'deliveryCharge'])->name('checkout.deliveryCharge');
 
-    // Coupon apply
+    // ═══ Coupon ═══
     Route::post('/coupon/apply', [CouponController::class, 'apply'])->name('coupon.apply');
 
-    // My Orders (customer)
+    // ═══ My Orders (customer) ═══
     Route::get('/my-orders', [MyOrderController::class, 'index'])->name('my-orders.index');
     Route::get('/my-orders/{order}', [MyOrderController::class, 'show'])->name('my-orders.show');
 
+    // ═══ Cart ═══
     Route::prefix('cart')->name('cart.')->group(function () {
         Route::get('/', [CartController::class, 'index'])->name('index');
         Route::post('/add', [CartController::class, 'add'])->name('add');
@@ -80,7 +83,7 @@ Route::middleware('auth')->group(function () {
         ->name('admin.')
         ->group(function () {
 
-            // Products
+            // ═══ Products ═══
             Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
             Route::get('/products/create', [AdminProductController::class, 'create'])->name('products.create');
             Route::post('/products', [AdminProductController::class, 'store'])->name('products.store');
@@ -89,7 +92,18 @@ Route::middleware('auth')->group(function () {
             Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
             Route::patch('/products/{product}/toggle', [AdminProductController::class, 'toggleStatus'])->name('products.toggle');
 
-            // Coupons
+            // ═══ Categories ═══
+            Route::get('/categories', [AdminCategoryController::class, 'index'])->name('categories.index');
+            Route::get('/categories/create', [AdminCategoryController::class, 'create'])->name('categories.create');
+            Route::post('/categories', [AdminCategoryController::class, 'store'])->name('categories.store');
+            Route::get('/categories/{category}/edit', [AdminCategoryController::class, 'edit'])->name('categories.edit');
+            Route::put('/categories/{category}', [AdminCategoryController::class, 'update'])->name('categories.update');
+            Route::delete('/categories/{category}', [AdminCategoryController::class, 'destroy'])->name('categories.destroy');
+            Route::patch('/categories/{category}/toggle', [AdminCategoryController::class, 'toggle'])->name('categories.toggle');
+            Route::patch('/categories/{category}/toggle-featured', [AdminCategoryController::class, 'toggleFeatured'])->name('categories.toggle-featured');
+            Route::delete('/categories/{category}/image', [AdminCategoryController::class, 'removeImage'])->name('categories.remove-image');
+
+            // ═══ Coupons ═══
             Route::get('/coupons', [AdminCouponController::class, 'index'])->name('coupons.index');
             Route::get('/coupons/create', [AdminCouponController::class, 'create'])->name('coupons.create');
             Route::post('/coupons', [AdminCouponController::class, 'store'])->name('coupons.store');
@@ -98,6 +112,7 @@ Route::middleware('auth')->group(function () {
             Route::delete('/coupons/{coupon}', [AdminCouponController::class, 'destroy'])->name('coupons.destroy');
             Route::patch('/coupons/{coupon}/toggle', [AdminCouponController::class, 'toggle'])->name('coupons.toggle');
 
+            // ═══ Reviews ═══
             Route::get('/reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
             Route::get('/reviews/{product}', [AdminReviewController::class, 'show'])->name('reviews.show');
             Route::delete('/reviews/{review}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');
@@ -122,7 +137,7 @@ Route::middleware('auth')->group(function () {
             Route::delete('/delivery-charges/{deliveryCharge}', [AdminDeliveryChargeController::class, 'destroy'])->name('delivery-charges.destroy');
             Route::patch('/delivery-charges/{deliveryCharge}/toggle', [AdminDeliveryChargeController::class, 'toggle'])->name('delivery-charges.toggle');
 
-            // Users (permission: user.view)
+            // ═══ Users ═══
             Route::middleware('permission:user.view')->group(function () {
                 Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
                 Route::get('/users/create', [AdminUserController::class, 'create'])->name('users.create');
@@ -133,7 +148,7 @@ Route::middleware('auth')->group(function () {
                 Route::patch('/users/{user}/toggle', [AdminUserController::class, 'toggle'])->name('users.toggle');
             });
 
-            // Roles (permission: role.view)
+            // ═══ Roles ═══
             Route::middleware('permission:role.view')->group(function () {
                 Route::get('/roles', [AdminRoleController::class, 'index'])->name('roles.index');
                 Route::get('/roles/create', [AdminRoleController::class, 'create'])->name('roles.create');
@@ -143,7 +158,7 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy'])->name('roles.destroy');
             });
 
-            // Permissions (permission: permission.view)
+            // ═══ Permissions ═══
             Route::middleware('permission:permission.view')->group(function () {
                 Route::get('/permissions', [AdminPermissionController::class, 'index'])->name('permissions.index');
             });
@@ -163,20 +178,22 @@ Route::middleware('auth')->group(function () {
             Route::post('/orders/{order}/out-for-delivery', [DeliveryOrderController::class, 'markOutForDelivery'])->name('orders.out');
         });
 
-    // ── bKash ──
+    // ═══ Payment Gateways ═══
+
+    // bKash
     Route::post('/bkash/pay', [BkashController::class, 'pay'])->name('bkash.pay');
     Route::get('/bkash/history', [BkashController::class, 'index'])->name('bkash.index');
     Route::get('/bkash/status/{paymentId}', [BkashController::class, 'status'])->name('bkash.status');
 
-    // ── PayPal ──
+    // PayPal
     Route::post('/paypal/pay', [PayPalController::class, 'pay'])->name('paypal.pay');
     Route::get('/paypal/history', [PayPalController::class, 'index'])->name('paypal.index');
 
-    // ── SSLCommerz ──
+    // SSLCommerz
     Route::post('/sslcommerz/pay', [SslCommerzController::class, 'pay'])->name('sslcommerz.pay');
     Route::get('/sslcommerz/history', [SslCommerzController::class, 'index'])->name('sslcommerz.index');
 
-    // ── Cash on Delivery (multi-step OTP flow) ──
+    // Cash on Delivery
     Route::prefix('cash')->name('cash.')->group(function () {
         Route::post('/pay', [CashController::class, 'pay'])->name('pay');
         Route::get('/{order}/confirm', [CashController::class, 'confirm'])->name('confirm');
@@ -187,7 +204,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{order}/cancel', [CashController::class, 'cancel'])->name('cancel');
     });
 
-    // ── Profile ──
+    // ═══ Profile ═══
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

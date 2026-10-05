@@ -20,6 +20,7 @@ class Product extends Model
         'price_bdt',
         'price_usd',
         'discount_price',
+        'category', 'category_id', 
         'image',
         'gallery',
         'quantity',
@@ -159,5 +160,10 @@ class Product extends Model
             'rating'       => round($stats->avg_rating ?? 0, 2),
             'review_count' => $stats->total ?? 0,
         ]);
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 }

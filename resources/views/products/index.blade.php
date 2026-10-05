@@ -58,6 +58,61 @@
             max-width: 480px;
         }
 
+        /* ── Category filter tabs ── */
+        .prod-categories {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.25rem;
+            overflow-x: auto;
+        }
+        .prod-categories::-webkit-scrollbar { height: 4px; }
+        .prod-categories::-webkit-scrollbar-thumb { background: rgba(41,231,255,0.2); border-radius: 2px; }
+
+        .prod-cat-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1rem;
+            border-radius: 0.65rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-mu);
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            text-decoration: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+            backdrop-filter: blur(12px);
+        }
+        .prod-cat-tab:hover {
+            color: var(--text-hi);
+            border-color: rgba(41,231,255,0.4);
+            transform: translateY(-1px);
+        }
+        .prod-cat-tab.active {
+            color: var(--cyan);
+            background: rgba(41,231,255,0.12);
+            border-color: rgba(41,231,255,0.5);
+            box-shadow: 0 0 0 3px rgba(41,231,255,0.08);
+        }
+        .prod-cat-tab .icon {
+            font-size: 0.95rem;
+        }
+        .prod-cat-tab .count {
+            font-size: 0.68rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text-mu);
+            margin-left: 0.15rem;
+        }
+        .prod-cat-tab.active .count {
+            background: rgba(41,231,255,0.2);
+            color: var(--cyan);
+        }
+
         /* ── Toolbar ── */
         .prod-toolbar {
             display: flex;
@@ -102,7 +157,7 @@
         }
         .prod-filter option { background: #111827; }
 
-        /* ── Grid — smaller cards ── */
+        /* ── Grid ── */
         .prod-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -300,7 +355,7 @@
             display: block;
         }
 
-        /* View button (replaces Buy) */
+        /* View button */
         .prod-view {
             display: inline-flex;
             align-items: center;
@@ -366,6 +421,32 @@
             <p class="prod-sub">Secure sandbox checkout — explore our catalog. No real money moves.</p>
         </div>
 
+        {{-- ── Category filter tabs ── --}}
+        @if (isset($categories) && $categories->count() > 0)
+            <div class="prod-categories">
+                <a href="{{ route('products.index') }}"
+                   class="prod-cat-tab {{ ! request('category') ? 'active' : '' }}">
+                    <span class="icon">🛍️</span>
+                    All Products
+                    <span class="count">{{ $products->count() }}</span>
+                </a>
+
+                @foreach ($categories as $category)
+                    <a href="{{ route('products.index', ['category' => $category->slug]) }}"
+                       class="prod-cat-tab {{ request('category') === $category->slug ? 'active' : '' }}">
+                        @if ($category->icon)
+                            <span class="icon">{{ $category->icon }}</span>
+                        @elseif ($category->hasImage())
+                            <img src="{{ $category->image_url }}" alt="{{ $category->name }}"
+                                 style="width:16px; height:16px; border-radius:4px; object-fit:cover;">
+                        @endif
+                        {{ $category->name }}
+                        <span class="count">{{ $category->products_count }}</span>
+                    </a>
+                @endforeach
+            </div>
+        @endif
+
         {{-- ── Toolbar (search + filter) ── --}}
         <div class="prod-toolbar">
             <div class="prod-search">
@@ -400,6 +481,7 @@
                     $stars = str_repeat('★', $rounded) . str_repeat('☆', 5 - $rounded);
                 @endphp
 
+                {{-- ✅ Card is now a link to details page --}}
                 <a href="{{ route('products.show', $product) }}"
                    class="prod-card"
                    data-name="{{ strtolower($product->name) }}"
@@ -423,7 +505,7 @@
 
                     {{-- Top: category + badge --}}
                     <div class="prod-card-top">
-                        <span class="prod-cat">{{ $product->category ?? 'Product' }}</span>
+                        <span class="prod-cat">{{ $product->category?->name ?? 'Product' }}</span>
                         <span class="prod-badge {{ $badgeClass }}">{{ $badgeText }}</span>
                     </div>
 
@@ -470,8 +552,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                               d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                     </svg>
-                    <p class="text-base font-semibold text-slate-300 mb-1">No products available</p>
-                    <p class="text-sm">Check back soon — new items are on the way.</p>
+                    <p class="text-base font-semibold text-slate-300 mb-1">No products found</p>
+                    <p class="text-sm">Try a different category or search term.</p>
                 </div>
             @endforelse
         </div>

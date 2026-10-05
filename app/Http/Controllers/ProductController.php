@@ -2,53 +2,73 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
-use App\Services\CheckoutService;
-use App\Services\OrderService;
+use App\Services\ReviewService;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function __construct(
-        protected CheckoutService $checkout,
-        protected OrderService $orderService,
-    ) {}
-
-    public function index()
+    public function __construct(protected ReviewService $reviews)
     {
-        $products = Product::active()->orderBy('id')->get();
-        return view('products.index', compact('products'));
     }
 
-    public function checkout(Product $product)
+    /**
+     * Product grid with category filter.
+     */
+    public function index(Request $request)
     {
-        if (! $product->is_active) {
-            return redirect()->route('products.index')
-                ->with('error', 'This product is not available.');
+        $query = Product::active()->with('category');
+
+        // Filter by category (includes children)
+        if ($categorySlug = $request->query('category')) {
+            $category = Category::where('slug', $categorySlug)->first();
+
+            if ($category) {
+                $categoryIds = [$category->id];
+
+                // Include children categories
+                $childIds = Category::where('parent_id', $category->id)
+                    ->pluck('id')
+                    ->toArray();
+
+                $categoryIds = array_merge($categoryIds, $childIds);
+
+                $query->whereIn('category_id', $categoryIds);
+            }
         }
 
-        if ($product->stock <= 0) {
-            return redirect()->route('products.index')
-                ->with('error', 'Sorry, this product is out of stock.');
-        }
+        $products = $query->orderBy('id')->get();
 
-        $summary = $this->checkout->resolve(auth()->user(), $product);
+        // Categories for filter tabs
+        $categories = Category::active()
+            ->whereNull('parent_id')
+            ->ordered()
+            ->withCount(['products' => function ($q) {
+                $q->where('is_active', true);
+            }])
+            ->get();
 
-        return view('checkout.show', compact('product', 'summary'));
+        return view('products.index', compact('products', 'categories'));
     }
 
+    /**
+     * Product details page.
+     */
     public function show(Product $product)
     {
         if (! $product->is_active) {
             abort(404);
         }
 
-        // Related products
+        $product->load('category');
+
+        // Related products (same category)
         $relatedProducts = collect();
 
-        if ($product->category) {
+        if ($product->category_id) {
             $relatedProducts = Product::active()
-                ->where('category', $product->category)
+                ->where('category_id', $product->category_id)
                 ->where('id', '!=', $product->id)
                 ->inStock()
                 ->orderByDesc('rating')
@@ -69,21 +89,19 @@ class ProductController extends Controller
             $relatedProducts = $relatedProducts->merge($extra);
         }
 
-        // ═══ Reviews ═══
-        $reviewService = app(\App\Services\ReviewService::class);
-
+        // Reviews
         $filters = [
             'rating' => request('rating'),
             'sort'   => request('sort', 'newest'),
         ];
 
-        $reviews          = $reviewService->getReviews($product, $filters, 10);
-        $ratingBreakdown  = $reviewService->getRatingBreakdown($product);
+        $reviews          = $this->reviews->getReviews($product, $filters, 10);
+        $ratingBreakdown  = $this->reviews->getRatingBreakdown($product);
         $userReview       = auth()->check()
-            ? $reviewService->getUserReview(auth()->user(), $product)
+            ? $this->reviews->getUserReview(auth()->user(), $product)
             : null;
         $canReview        = auth()->check()
-            && $reviewService->canReview(auth()->user(), $product)
+            && $this->reviews->canReview(auth()->user(), $product)
             && ! $userReview;
 
         return view('products.show', compact(
@@ -94,23 +112,5 @@ class ProductController extends Controller
             'userReview',
             'canReview'
         ));
-    }
-
-    /**
-     * AJAX: Calculate delivery charge for a city.
-     */
-    public function deliveryCharge(Request $request)
-    {
-        $request->validate([
-            'city'   => 'required|string',
-            'amount' => 'required|numeric|min:0',
-        ]);
-
-        $result = $this->orderService->calculateDeliveryCharge(
-            $request->city,
-            (float) $request->amount
-        );
-
-        return response()->json($result);
     }
 }

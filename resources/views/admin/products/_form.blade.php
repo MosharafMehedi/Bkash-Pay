@@ -8,7 +8,6 @@
         border-radius: 0.75rem;
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.08);
-        margin: 3px 0px;
     }
 
     .fsection-title {
@@ -29,7 +28,7 @@
     }
     .ffield label .req { color: #f87171; }
 
-    .finput, .ftextarea {
+    .finput, .ftextarea, .fselect {
         width: 100%;
         background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.1);
@@ -38,13 +37,19 @@
         font-size: 0.875rem;
         color: #f1f5f9;
         outline: none;
-        transition: border-color 0.15s;
+        transition: border-color 0.15s, background 0.15s;
+        font-family: inherit;
     }
     .finput::placeholder, .ftextarea::placeholder { color: #64748b; }
-    .finput:focus, .ftextarea:focus { border-color: rgba(41,231,255,0.6); }
+    .finput:focus, .ftextarea:focus, .fselect:focus {
+        border-color: rgba(41,231,255,0.6);
+        background: rgba(41,231,255,0.04);
+    }
     .ftextarea { resize: vertical; min-height: 90px; }
+    .fselect { cursor: pointer; }
+    .fselect option { background: #111827; color: #f1f5f9; }
 
-    .finput.is-invalid, .ftextarea.is-invalid { border-color: #f87171; }
+    .finput.is-invalid, .ftextarea.is-invalid, .fselect.is-invalid { border-color: #f87171; }
 
     .fhint { font-size: 0.7rem; color: #64748b; margin-top: 0.3rem; }
     .ferror { font-size: 0.7rem; color: #f87171; margin-top: 0.3rem; }
@@ -178,11 +183,24 @@
                               class="ftextarea">{{ old('description', $p->description ?? '') }}</textarea>
                 </div>
 
+                {{-- Category + Brand + SKU --}}
                 <div class="fgrid-3">
                     <div class="ffield">
                         <label>Category</label>
-                        <input type="text" name="category" value="{{ old('category', $p->category ?? '') }}"
-                               placeholder="Audio" class="finput">
+                        <select name="category_id" class="fselect @error('category_id') is-invalid @enderror">
+                            <option value="">— Select Category —</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}"
+                                        {{ old('category_id', $p->category_id ?? '') == $category->id ? 'selected' : '' }}>
+                                    @if ($category->parent_id)
+                                        ↳ {{ $category->name }}
+                                    @else
+                                        {{ $category->name }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('category_id') <div class="ferror">{{ $message }}</div> @enderror
                     </div>
                     <div class="ffield">
                         <label>Brand</label>

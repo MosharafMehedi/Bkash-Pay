@@ -4,21 +4,31 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\CategoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    public function __construct(protected CategoryService $categories)
+    {
+    }
+
+    /**
+     * Product list.
+     */
     public function index(Request $request)
     {
-        $query = Product::query();
+        $query = Product::with('category');
 
         if ($q = $request->query('q')) {
             $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")
                   ->orWhere('sku', 'like', "%{$q}%")
-                  ->orWhere('category', 'like', "%{$q}%");
+                  ->orWhereHas('category', function ($c) use ($q) {
+                      $c->where('name', 'like', "%{$q}%");
+                  });
             });
         }
 
@@ -26,19 +36,34 @@ class ProductController extends Controller
             $query->where('is_active', $status === 'active');
         }
 
+        if ($categoryId = $request->query('category')) {
+            $query->where('category_id', $categoryId);
+        }
+
         $products = $query->latest()->paginate(12)->withQueryString();
 
-        return view('admin.products.index', compact('products'));
+        $categories = $this->categories->getParentOptions();
+
+        return view('admin.products.index', compact('products', 'categories'));
     }
 
+    /**
+     * Show create form.
+     */
     public function create()
     {
-        return view('admin.products.create');
+        $categories = $this->categories->getForProductSelect();
+
+        return view('admin.products.create', compact('categories'));
     }
 
+    /**
+     * Store new product.
+     */
     public function store(Request $request)
     {
         $data = $this->validated($request);
+
         $data['slug'] = Str::slug($data['name']) . '-' . Str::random(4);
 
         if ($request->hasFile('image')) {
@@ -53,8 +78,7 @@ class ProductController extends Controller
             $data['gallery'] = $gallery;
         }
 
-        // Tags as array
-        if (!empty($data['tags'])) {
+        if (! empty($data['tags'])) {
             $data['tags'] = array_map('trim', explode(',', $data['tags']));
         }
 
@@ -64,11 +88,19 @@ class ProductController extends Controller
             ->with('success', 'Product created successfully.');
     }
 
+    /**
+     * Show edit form.
+     */
     public function edit(Product $product)
     {
-        return view('admin.products.edit', compact('product'));
+        $categories = $this->categories->getForProductSelect();
+
+        return view('admin.products.edit', compact('product', 'categories'));
     }
 
+    /**
+     * Update product.
+     */
     public function update(Request $request, Product $product)
     {
         $data = $this->validated($request);
@@ -89,7 +121,7 @@ class ProductController extends Controller
             $data['gallery'] = $gallery;
         }
 
-        if (!empty($data['tags']) && is_string($data['tags'])) {
+        if (! empty($data['tags']) && is_string($data['tags'])) {
             $data['tags'] = array_map('trim', explode(',', $data['tags']));
         }
 
@@ -99,6 +131,9 @@ class ProductController extends Controller
             ->with('success', 'Product updated successfully.');
     }
 
+    /**
+     * Delete product.
+     */
     public function destroy(Product $product)
     {
         if ($product->image) Storage::disk('public')->delete($product->image);
@@ -110,39 +145,43 @@ class ProductController extends Controller
         return back()->with('success', 'Product deleted successfully.');
     }
 
+    /**
+     * Toggle status.
+     */
     public function toggleStatus(Product $product)
     {
         $product->update(['is_active' => ! $product->is_active]);
+
         return back()->with('success', 'Status updated.');
     }
 
     /**
-     * Common validation
+     * Common validation.
      */
     private function validated(Request $request): array
     {
         return $request->validate([
-            'name'            => 'required|string|max:255',
-            'subtitle'        => 'nullable|string|max:255',
-            'description'     => 'nullable|string',
-            'price_bdt'       => 'required|numeric|min:0',
-            'price_usd'       => 'required|numeric|min:0',
-            'discount_price'  => 'nullable|numeric|min:0',
-            'image'           => 'nullable|image|max:2048',
-            'gallery.*'       => 'nullable|image|max:2048',
-            'quantity'        => 'required|integer|min:0',
-            'stock'           => 'required|integer|min:0',
-            'sku'             => 'nullable|string|max:100',
-            'category'        => 'nullable|string|max:100',
-            'brand'           => 'nullable|string|max:100',
-            'tags'            => 'nullable|string',
-            'rating'          => 'nullable|numeric|min:0|max:5',
-            'review_count'    => 'nullable|integer|min:0',
-            'is_active'       => 'boolean',
-            'is_featured'     => 'boolean',
-            'published_at'    => 'nullable|date',
-            'meta_title'      => 'nullable|string|max:255',
-            'meta_description'=> 'nullable|string',
+            'name'             => 'required|string|max:255',
+            'subtitle'         => 'nullable|string|max:255',
+            'description'      => 'nullable|string',
+            'price_bdt'        => 'required|numeric|min:0',
+            'price_usd'        => 'required|numeric|min:0',
+            'discount_price'   => 'nullable|numeric|min:0',
+            'image'            => 'nullable|image|max:2048',
+            'gallery.*'        => 'nullable|image|max:2048',
+            'quantity'         => 'required|integer|min:0',
+            'stock'            => 'required|integer|min:0',
+            'sku'              => 'nullable|string|max:100',
+            'category_id'      => 'nullable|exists:categories,id',
+            'brand'            => 'nullable|string|max:100',
+            'tags'             => 'nullable|string',
+            'rating'           => 'nullable|numeric|min:0|max:5',
+            'review_count'     => 'nullable|integer|min:0',
+            'is_active'        => 'boolean',
+            'is_featured'      => 'boolean',
+            'published_at'     => 'nullable|date',
+            'meta_title'       => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string',
         ]);
     }
 }

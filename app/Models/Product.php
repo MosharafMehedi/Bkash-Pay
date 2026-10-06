@@ -20,7 +20,8 @@ class Product extends Model
         'price_bdt',
         'price_usd',
         'discount_price',
-        'category', 'category_id', 
+        'category',
+        'category_id',
         'image',
         'gallery',
         'quantity',
@@ -36,6 +37,9 @@ class Product extends Model
         'published_at',
         'meta_title',
         'meta_description',
+        'is_deal',
+        'deal_price',
+        'deal_ends_at',
     ];
 
     protected $casts = [
@@ -45,6 +49,9 @@ class Product extends Model
         'is_featured'  => 'boolean',
         'published_at' => 'datetime',
         'rating'       => 'decimal:2',
+        'is_deal' => 'boolean',
+        'deal_price' => 'decimal:2',
+        'deal_ends_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -165,5 +172,30 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function scopeDeals($q)
+    {
+        return $q->where('is_deal', true)
+            ->whereNotNull('deal_price')
+            ->where(function ($w) {
+                $w->whereNull('deal_ends_at')->orWhere('deal_ends_at', '>=', now());
+            });
+    }
+
+    public function isDealActive(): bool
+    {
+        return $this->is_deal
+            && $this->deal_price !== null
+            && (! $this->deal_ends_at || $this->deal_ends_at->isFuture());
+    }
+
+    public function getEffectivePriceAttribute(): float
+    {
+        if ($this->isDealActive()) {
+            return (float) $this->deal_price;
+        }
+
+        return (float) ($this->discount_price ?? $this->price_bdt);
     }
 }

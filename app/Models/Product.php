@@ -27,7 +27,6 @@ class Product extends Model
         'quantity',
         'stock',
         'sku',
-        'category',
         'brand',
         'tags',
         'rating',

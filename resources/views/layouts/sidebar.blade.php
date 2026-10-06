@@ -1,5 +1,5 @@
 <aside class="app-sidebar fixed top-0 left-0 h-screen w-[260px] flex flex-col z-40 transition-transform duration-300"
-       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
     <!-- Logo — role-based home -->
     @php
@@ -15,9 +15,11 @@
 
     <div class="flex items-center justify-between h-16 px-5 border-b border-white/5 flex-shrink-0">
         <a href="{{ route($homeRoute) }}" class="flex items-center gap-2">
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
+            <div
+                class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
             </div>
             <span class="text-lg font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
@@ -89,9 +91,52 @@
                     class="sidebar-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                     <span>Categories</span>
+                </a>
+            @endcan
+            @can('slider.view')
+                <a href="{{ route('admin.sliders.index') }}"
+                    class="sidebar-link {{ request()->routeIs('admin.sliders.*') ? 'active' : '' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Sliders</span>
+                </a>
+            @endcan
+            @can('announcement.view')
+                <a href="{{ route('admin.announcements.index') }}"
+                    class="sidebar-link {{ request()->routeIs('admin.announcements.*') ? 'active' : '' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                    </svg>
+                    <span>Announcements</span>
+                </a>
+            @endcan
+            @can('homepage.view')
+                <a href="{{ route('admin.homepage.index') }}"
+                    class="sidebar-link {{ request()->routeIs('admin.homepage.*') ? 'active' : '' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Homepage</span>
+                </a>
+            @endcan
+
+            @can('newsletter.view')
+                <a href="{{ route('admin.newsletter.index') }}"
+                    class="sidebar-link {{ request()->routeIs('admin.newsletter.*') ? 'active' : '' }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>Newsletter</span>
                 </a>
             @endcan
             @can('product.view')
@@ -230,14 +275,14 @@
     <div class="p-4 border-t border-white/5 flex-shrink-0">
         <div class="flex items-center gap-3">
             @if (auth()->user()->hasAvatar())
-    <img src="{{ auth()->user()->avatar_url }}"
-         alt="{{ auth()->user()->name }}"
-         class="w-9 h-9 rounded-full object-cover border-2 border-cyan-500/30">
-        @else
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
-                {{ auth()->user()->initials }}
-            </div>
-        @endif
+                <img src="{{ auth()->user()->avatar_url }}" alt="{{ auth()->user()->name }}"
+                    class="w-9 h-9 rounded-full object-cover border-2 border-cyan-500/30">
+            @else
+                <div
+                    class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
+                    {{ auth()->user()->initials }}
+                </div>
+            @endif
             <div class="flex-1 min-w-0">
                 <p class="text-sm font-semibold text-slate-200 truncate">{{ auth()->user()->name ?? 'Guest' }}</p>
                 <p class="text-xs text-slate-500 truncate">

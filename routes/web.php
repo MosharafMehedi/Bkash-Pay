@@ -1,14 +1,18 @@
 <?php
 
+use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\DeliveryChargeController as AdminDeliveryChargeController;
+use App\Http\Controllers\Admin\HomepageController as AdminHomepageController;
+use App\Http\Controllers\Admin\NewsletterController as AdminNewsletterController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PermissionController as AdminPermissionController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
-use App\Http\Controllers\Admin\RoleController as AdminRoleController;
-use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ReviewController as AdminReviewController;
-use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Admin\RoleController as AdminRoleController;
+use App\Http\Controllers\Admin\SliderController as AdminSliderController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BkashController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CashController;
@@ -18,6 +22,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Delivery\DashboardController as DeliveryDashboardController;
 use App\Http\Controllers\Delivery\OrderController as DeliveryOrderController;
 use App\Http\Controllers\MyOrderController;
+use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\PayPalController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
@@ -26,9 +31,16 @@ use App\Http\Controllers\ReviewReplyController;
 use App\Http\Controllers\SslCommerzController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//     return view('welcome');
+// });
+
+Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('welcome');
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])
+    ->name('newsletter.subscribe');
+
+Route::get('/newsletter/unsubscribe/{token}', [\App\Http\Controllers\NewsletterController::class, 'unsubscribe'])
+    ->name('newsletter.unsubscribe');
 
 Route::middleware('auth')->group(function () {
 
@@ -103,6 +115,32 @@ Route::middleware('auth')->group(function () {
             Route::patch('/categories/{category}/toggle-featured', [AdminCategoryController::class, 'toggleFeatured'])->name('categories.toggle-featured');
             Route::delete('/categories/{category}/image', [AdminCategoryController::class, 'removeImage'])->name('categories.remove-image');
 
+            Route::get('/sliders', [AdminSliderController::class, 'index'])->name('sliders.index');
+            Route::get('/sliders/create', [AdminSliderController::class, 'create'])->name('sliders.create');
+            Route::post('/sliders', [AdminSliderController::class, 'store'])->name('sliders.store');
+            Route::get('/sliders/{slider}/edit', [AdminSliderController::class, 'edit'])->name('sliders.edit');
+            Route::put('/sliders/{slider}', [AdminSliderController::class, 'update'])->name('sliders.update');
+            Route::delete('/sliders/{slider}', [AdminSliderController::class, 'destroy'])->name('sliders.destroy');
+            Route::patch('/sliders/{slider}/toggle', [AdminSliderController::class, 'toggle'])->name('sliders.toggle');
+            Route::delete('/sliders/{slider}/image', [AdminSliderController::class, 'removeImage'])->name('sliders.remove-image');
+
+            Route::get('/announcements', [AdminAnnouncementController::class, 'index'])->name('announcements.index');
+            Route::get('/announcements/create', [AdminAnnouncementController::class, 'create'])->name('announcements.create');
+            Route::post('/announcements', [AdminAnnouncementController::class, 'store'])->name('announcements.store');
+            Route::get('/announcements/{announcement}/edit', [AdminAnnouncementController::class, 'edit'])->name('announcements.edit');
+            Route::put('/announcements/{announcement}', [AdminAnnouncementController::class, 'update'])->name('announcements.update');
+            Route::delete('/announcements/{announcement}', [AdminAnnouncementController::class, 'destroy'])->name('announcements.destroy');
+            Route::patch('/announcements/{announcement}/toggle', [AdminAnnouncementController::class, 'toggle'])->name('announcements.toggle');
+
+            // ═══ Homepage Settings ═══
+            Route::get('/homepage', [AdminHomepageController::class, 'index'])->name('homepage.index');
+            Route::put('/homepage', [AdminHomepageController::class, 'update'])->name('homepage.update');
+            Route::post('/homepage/reset', [AdminHomepageController::class, 'reset'])->name('homepage.reset');
+
+            // ═══ Newsletter ═══
+            Route::get('/newsletter', [AdminNewsletterController::class, 'index'])->name('newsletter.index');
+            Route::get('/newsletter/export', [AdminNewsletterController::class, 'export'])->name('newsletter.export');
+            Route::delete('/newsletter/{subscriber}', [AdminNewsletterController::class, 'destroy'])->name('newsletter.destroy');
             // ═══ Coupons ═══
             Route::get('/coupons', [AdminCouponController::class, 'index'])->name('coupons.index');
             Route::get('/coupons/create', [AdminCouponController::class, 'create'])->name('coupons.create');

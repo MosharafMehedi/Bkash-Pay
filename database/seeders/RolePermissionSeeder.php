@@ -28,6 +28,23 @@ class RolePermissionSeeder extends Seeder
             'category.create',
             'category.edit',
             'category.delete',
+            // Sliders
+            'slider.view',
+            'slider.create',
+            'slider.edit',
+            'slider.delete',
+            // Announcements
+            'announcement.view',
+            'announcement.create',
+            'announcement.edit',
+            'announcement.delete',
+            // Homepage
+            'homepage.view',
+            'homepage.edit',
+
+            // Newsletter
+            'newsletter.view',
+            'newsletter.delete',
             // Coupons
             'coupon.view',
             'coupon.create',

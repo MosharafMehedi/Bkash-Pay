@@ -12,10 +12,8 @@ class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // ── Permissions (grouped by module) ──
         $permissions = [
             // Products
             'product.view',

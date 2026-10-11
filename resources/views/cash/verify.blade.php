@@ -217,14 +217,12 @@
                 sync();
             });
 
-            // Backspace → go back
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Backspace' && ! e.target.value && idx > 0) {
                     inputs[idx - 1].focus();
                 }
             });
 
-            // Paste full code
             input.addEventListener('paste', (e) => {
                 e.preventDefault();
                 const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');

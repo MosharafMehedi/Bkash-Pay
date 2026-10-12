@@ -87,6 +87,12 @@
             font-size: 0.68rem; font-weight: 600; letter-spacing: 0.03em;
             background: rgba(41,231,255,0.12); color: var(--cyan);
             border: 1px solid rgba(41,231,255,0.25);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .pd-badge:hover {
+            background: rgba(41,231,255,0.22);
+            transform: translateY(-1px);
         }
         .pd-badge.green { background: rgba(52,211,153,0.12); color: #34d399; border-color: rgba(52,211,153,0.28); }
         .pd-badge.pink  { background: rgba(255,95,176,0.12); color: var(--pink); border-color: rgba(255,95,176,0.28); }
@@ -152,6 +158,12 @@
         }
         .pd-spec-label { color: var(--text-mu); font-size: 0.72rem; }
         .pd-spec-value { color: var(--text-hi); font-weight: 500; }
+        .pd-spec-value a {
+            color: var(--cyan);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .pd-spec-value a:hover { color: #67e8f9; }
 
         /* Stock */
         .pd-stock {
@@ -271,6 +283,13 @@
         }
         .pd-rel-img img { width: 100%; height: 100%; object-fit: cover; }
         .pd-rel-body { padding: 0.85rem; }
+        .pd-rel-cat {
+            font-size: 0.62rem;
+            color: var(--text-mu);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.25rem;
+        }
         .pd-rel-name {
             font-size: 0.85rem; font-weight: 600; color: var(--text-hi);
             margin-bottom: 0.35rem;
@@ -288,9 +307,7 @@
             padding-top: 3rem;
             border-top: 1px solid var(--glass-border);
         }
-        .pdr-header {
-            margin-bottom: 1.5rem;
-        }
+        .pdr-header { margin-bottom: 1.5rem; }
         .pdr-title {
             font-family: 'Sora', sans-serif;
             font-size: 1.35rem;
@@ -567,7 +584,9 @@
             font-family: 'Sora', sans-serif; font-weight: 700;
             color: var(--cyan); font-size: 1rem;
             flex-shrink: 0;
+            overflow: hidden;
         }
+        .pdr-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .pdr-card-info { flex: 1; min-width: 0; }
         .pdr-card-name {
             font-size: 0.9rem; font-weight: 700; color: var(--text-hi);
@@ -659,7 +678,9 @@
             font-size: 0.7rem; font-weight: 700;
             color: var(--text-hi);
             flex-shrink: 0;
+            overflow: hidden;
         }
+        .pdr-reply-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .pdr-reply-avatar.admin {
             background: rgba(167,139,250,0.15);
             border-color: rgba(167,139,250,0.35);
@@ -785,7 +806,15 @@
             <span class="pd-breadcrumb-sep">/</span>
             <a href="{{ route('products.index') }}">Products</a>
             <span class="pd-breadcrumb-sep">/</span>
-            <a href="{{ route('products.index', ['category' => $product->category]) }}">{{ $product->category ?? 'All' }}</a>
+
+            @if ($product->category)
+                <a href="{{ route('products.index', ['category' => $product->category->slug]) }}">
+                    {{ $product->category->name }}
+                </a>
+            @else
+                <span>All Products</span>
+            @endif
+
             <span class="pd-breadcrumb-sep">/</span>
             <span class="pd-breadcrumb-current">{{ \Illuminate\Support\Str::limit($product->name, 40) }}</span>
         </nav>
@@ -833,15 +862,21 @@
                 {{-- Badges --}}
                 <div class="pd-badges">
                     @if ($product->category)
-                        <span class="pd-badge">{{ $product->category }}</span>
+                        <a href="{{ route('products.index', ['category' => $product->category->slug]) }}"
+                           class="pd-badge">
+                            {{ $product->category->name }}
+                        </a>
                     @endif
+
                     @if ($product->brand)
                         <span class="pd-badge violet">{{ $product->brand }}</span>
                     @endif
+
                     @if ($product->discount_price && $product->discount_price < $product->price_bdt)
                         @php $pct = round((($product->price_bdt - $product->discount_price) / $product->price_bdt) * 100); @endphp
                         <span class="pd-badge pink">-{{ $pct }}% OFF</span>
                     @endif
+
                     @if ($product->is_featured)
                         <span class="pd-badge">⭐ Featured</span>
                     @endif
@@ -898,18 +933,25 @@
                             <span class="pd-spec-value">{{ $product->sku }}</span>
                         </div>
                     @endif
+
                     @if ($product->category)
                         <div class="pd-spec">
                             <span class="pd-spec-label">Category</span>
-                            <span class="pd-spec-value">{{ $product->category }}</span>
+                            <span class="pd-spec-value">
+                                <a href="{{ route('products.index', ['category' => $product->category->slug]) }}">
+                                    {{ $product->category->name }}
+                                </a>
+                            </span>
                         </div>
                     @endif
+
                     @if ($product->brand)
                         <div class="pd-spec">
                             <span class="pd-spec-label">Brand</span>
                             <span class="pd-spec-value">{{ $product->brand }}</span>
                         </div>
                     @endif
+
                     <div class="pd-spec">
                         <span class="pd-spec-label">Available</span>
                         <span class="pd-spec-value">{{ $product->stock }} units</span>
@@ -1016,6 +1058,9 @@
                                 @endif
                             </div>
                             <div class="pd-rel-body">
+                                @if ($rel->category)
+                                    <div class="pd-rel-cat">{{ $rel->category->name }}</div>
+                                @endif
                                 <div class="pd-rel-name">{{ $rel->name }}</div>
                                 <div class="pd-rel-price">৳{{ number_format($relFinal, 0) }}</div>
                             </div>

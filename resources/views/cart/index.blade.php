@@ -157,7 +157,7 @@
         .ct-qty button:hover:not(:disabled) { background: rgba(41,231,255,0.1); color: var(--cyan); }
         .ct-qty button:disabled { opacity: 0.3; cursor: not-allowed; }
         .ct-qty input {
-            width: 40px; height: 38px;
+            height: 38px;
             text-align: center; background: none; border: none;
             color: var(--text-hi); font-family: 'Sora', sans-serif;
             font-size: 0.9rem; font-weight: 700; outline: none;
@@ -405,7 +405,7 @@
                                 </button>
 
                                 {{-- Image --}}
-                                <a href="{{ route('products.show', $product) }}" class="ct-item-img">
+                                <a href="{{ $product ? route('products.show', $product) : '#' }}" class="ct-item-img">
                                     @if ($product && $product->image)
                                         <img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}">
                                     @else
@@ -418,10 +418,19 @@
 
                                 {{-- Info --}}
                                 <div class="ct-item-info">
-                                    <div class="ct-item-cat">{{ $product->category ?? 'Product' }}</div>
-                                    <a href="{{ route('products.show', $product) }}" class="ct-item-name">
+                                    {{-- Category (with fallback) --}}
+                                    <div class="ct-item-cat">
+                                        @if ($product && $product->category)
+                                            {{ $product->category->name }}
+                                        @else
+                                            Uncategorized
+                                        @endif
+                                    </div>
+
+                                    <a href="{{ $product ? route('products.show', $product) : '#' }}" class="ct-item-name">
                                         {{ $product->name ?? 'Product Unavailable' }}
                                     </a>
+
                                     <div class="ct-item-price">
                                         ৳{{ number_format($item->unit_price, 0) }} × <span class="item-qty-display">{{ $item->quantity }}</span>
                                         = <strong class="item-line-total">৳{{ number_format($item->line_total, 0) }}</strong>

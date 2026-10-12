@@ -51,7 +51,7 @@
                 </div>
             @endif
 
-            <a href="{{ route('dashboard') }}"
+            <a href="{{ route('my-orders') }}"
                 class="block w-full bg-emerald-700 hover:bg-emerald-800 transition text-white font-semibold py-3 rounded-xl">
                 Back to Home
             </a>

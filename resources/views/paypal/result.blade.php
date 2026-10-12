@@ -47,7 +47,7 @@
                 </div>
             @endif
 
-            <a href="{{ route('paypal.index') }}"
+            <a href="{{ route('my-orders') }}"
                 class="block w-full bg-blue-700 hover:bg-blue-800 transition text-white font-semibold py-3 rounded-xl">
                 Back to Home
             </a>

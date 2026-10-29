@@ -4,19 +4,22 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\AuditLogService;
 use App\Services\CategoryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
-    public function __construct(protected CategoryService $categories)
-    {
-    }
+    public function __construct(
+        protected CategoryService $categories,
+        protected AuditLogService $audit
+    ) {}
 
     /**
-     * Product list.
+     * Product list with filters.
      */
     public function index(Request $request)
     {
@@ -26,9 +29,7 @@ class ProductController extends Controller
             $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")
                   ->orWhere('sku', 'like', "%{$q}%")
-                  ->orWhereHas('category', function ($c) use ($q) {
-                      $c->where('name', 'like', "%{$q}%");
-                  });
+                  ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$q}%"));
             });
         }
 
@@ -41,14 +42,13 @@ class ProductController extends Controller
         }
 
         $products = $query->latest()->paginate(12)->withQueryString();
-
         $categories = $this->categories->getParentOptions();
 
         return view('admin.products.index', compact('products', 'categories'));
     }
 
     /**
-     * Show create form.
+     * Create form.
      */
     public function create()
     {
@@ -78,18 +78,29 @@ class ProductController extends Controller
             $data['gallery'] = $gallery;
         }
 
-        if (! empty($data['tags'])) {
+        if (! empty($data['tags']) && is_string($data['tags'])) {
             $data['tags'] = array_map('trim', explode(',', $data['tags']));
         }
 
-        Product::create($data);
+        try {
+            $product = Product::create($data);
 
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Product created successfully.');
+            $this->audit->logAction(
+                "Product created: {$product->name} (ID: {$product->id})",
+                $product,
+                ['new' => $product->only(['name', 'price_bdt', 'stock', 'is_active'])]
+            );
+
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Product created successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Product create failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not create product: ' . $e->getMessage())->withInput();
+        }
     }
 
     /**
-     * Show edit form.
+     * Edit form.
      */
     public function edit(Product $product)
     {
@@ -125,10 +136,15 @@ class ProductController extends Controller
             $data['tags'] = array_map('trim', explode(',', $data['tags']));
         }
 
-        $product->update($data);
+        try {
+            $product->update($data);
 
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Product updated successfully.');
+            return redirect()->route('admin.products.index')
+                ->with('success', 'Product updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Product update failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not update product: ' . $e->getMessage())->withInput();
+        }
     }
 
     /**
@@ -136,23 +152,38 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        if ($product->image) Storage::disk('public')->delete($product->image);
-        if ($product->gallery) {
-            foreach ($product->gallery as $img) Storage::disk('public')->delete($img);
-        }
-        $product->delete();
+        try {
+            if ($product->image) Storage::disk('public')->delete($product->image);
+            if ($product->gallery) {
+                foreach ($product->gallery as $img) Storage::disk('public')->delete($img);
+            }
 
-        return back()->with('success', 'Product deleted successfully.');
+            $name = $product->name;
+            $id = $product->id;
+            $product->delete();
+
+            $this->audit->logAction("Product deleted: {$name} (ID: {$id})");
+
+            return back()->with('success', 'Product deleted successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Product delete failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not delete product.');
+        }
     }
 
     /**
-     * Toggle status.
+     * Toggle active status.
      */
     public function toggleStatus(Product $product)
     {
-        $product->update(['is_active' => ! $product->is_active]);
+        try {
+            $product->update(['is_active' => ! $product->is_active]);
 
-        return back()->with('success', 'Status updated.');
+            return back()->with('success', 'Status updated.');
+        } catch (\Throwable $e) {
+            Log::error('Product toggle failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not update status.');
+        }
     }
 
     /**

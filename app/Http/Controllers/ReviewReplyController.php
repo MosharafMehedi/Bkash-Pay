@@ -11,13 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 class ReviewReplyController extends Controller
 {
-    public function __construct(protected ReviewService $reviews)
-    {
-    }
+    public function __construct(protected ReviewService $reviews) {}
 
-    /**
-     * Add a reply to a review.
-     */
     public function store(Request $request, Review $review)
     {
         $data = $request->validate([
@@ -32,7 +27,6 @@ class ReviewReplyController extends Controller
                 $data['comment'],
                 $data['parent_id'] ?? null
             );
-
             return back()->with('success', 'Reply posted.');
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
@@ -42,9 +36,6 @@ class ReviewReplyController extends Controller
         }
     }
 
-    /**
-     * Update own reply.
-     */
     public function update(Request $request, ReviewReply $reply)
     {
         abort_unless($reply->user_id === auth()->id(), 403);
@@ -55,7 +46,6 @@ class ReviewReplyController extends Controller
 
         try {
             $this->reviews->updateReply($reply, $data['comment']);
-
             return back()->with('success', 'Reply updated.');
         } catch (\Throwable $e) {
             Log::error('Reply update failed: ' . $e->getMessage());
@@ -63,16 +53,12 @@ class ReviewReplyController extends Controller
         }
     }
 
-    /**
-     * Delete own reply.
-     */
     public function destroy(ReviewReply $reply)
     {
         abort_unless($reply->user_id === auth()->id(), 403);
 
         try {
             $this->reviews->deleteReply($reply);
-
             return back()->with('success', 'Reply deleted.');
         } catch (\Throwable $e) {
             Log::error('Reply delete failed: ' . $e->getMessage());

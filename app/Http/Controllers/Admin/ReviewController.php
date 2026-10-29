@@ -6,35 +6,28 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\ReviewReply;
+use App\Services\AuditLogService;
 use App\Services\ReviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ReviewController extends Controller
 {
-    public function __construct(protected ReviewService $reviews)
-    {
-    }
+    public function __construct(
+        protected ReviewService $reviews,
+        protected AuditLogService $audit
+    ) {}
 
-    /**
-     * Product list — only products with reviews.
-     */
     public function index(Request $request)
     {
         $query = Product::query()
-            ->whereHas('reviews', function ($q) {
-                $q->where('is_approved', true);
-            })
-            ->withCount(['reviews as total_reviews_count' => function ($q) {
-                $q->where('is_approved', true);
-            }]);
+            ->whereHas('reviews', fn ($q) => $q->where('is_approved', true))
+            ->withCount(['reviews as total_reviews_count' => fn ($q) => $q->where('is_approved', true)]);
 
-        // Search
         if ($q = $request->query('q')) {
             $query->where('name', 'like', "%{$q}%");
         }
 
-        // Sort
         $sort = $request->query('sort', 'most-reviewed');
         match ($sort) {
             'highest-rated' => $query->orderByDesc('rating'),
@@ -45,7 +38,6 @@ class ReviewController extends Controller
 
         $products = $query->paginate(15)->withQueryString();
 
-        // Stats
         $stats = [
             'total_products'  => Product::whereHas('reviews')->count(),
             'total_reviews'   => Review::where('is_approved', true)->count(),
@@ -56,20 +48,15 @@ class ReviewController extends Controller
         return view('admin.reviews.index', compact('products', 'stats'));
     }
 
-    /**
-     * Show all reviews of a specific product.
-     */
     public function show(Request $request, Product $product)
     {
         $query = Review::with(['user', 'topLevelReplies.user'])
             ->where('product_id', $product->id);
 
-        // Filter by rating
         if ($rating = $request->query('rating')) {
             $query->where('rating', (int) $rating);
         }
 
-        // Filter by status
         $status = $request->query('status', 'all');
         if ($status === 'approved') {
             $query->where('is_approved', true);
@@ -77,7 +64,6 @@ class ReviewController extends Controller
             $query->where('is_approved', false);
         }
 
-        // Sort
         $sort = $request->query('sort', 'newest');
         match ($sort) {
             'oldest'  => $query->oldest(),
@@ -87,20 +73,20 @@ class ReviewController extends Controller
         };
 
         $reviews = $query->paginate(15)->withQueryString();
-
-        // Rating breakdown
         $ratingBreakdown = $this->reviews->getRatingBreakdown($product);
 
         return view('admin.reviews.show', compact('product', 'reviews', 'ratingBreakdown'));
     }
 
-    /**
-     * Delete a review (with replies).
-     */
     public function destroy(Review $review)
     {
         try {
+            $id = $review->id;
+            $productName = $review->product?->name ?? 'unknown';
+
             $this->reviews->deleteReview($review);
+
+            $this->audit->logAction("Review deleted (ID: {$id}, Product: {$productName})");
 
             return back()->with('success', 'Review deleted successfully.');
         } catch (\Throwable $e) {
@@ -109,13 +95,16 @@ class ReviewController extends Controller
         }
     }
 
-    /**
-     * Approve a review.
-     */
     public function approve(Review $review)
     {
         try {
             $this->reviews->approveReview($review);
+
+            $this->audit->logAction(
+                "Review approved (ID: {$review->id})",
+                $review,
+                ['new' => ['is_approved' => true]]
+            );
 
             return back()->with('success', 'Review approved.');
         } catch (\Throwable $e) {
@@ -124,13 +113,16 @@ class ReviewController extends Controller
         }
     }
 
-    /**
-     * Reject a review (hide from public).
-     */
     public function reject(Review $review)
     {
         try {
             $this->reviews->rejectReview($review);
+
+            $this->audit->logAction(
+                "Review rejected (ID: {$review->id})",
+                $review,
+                ['new' => ['is_approved' => false]]
+            );
 
             return back()->with('success', 'Review rejected and hidden.');
         } catch (\Throwable $e) {
@@ -139,13 +131,13 @@ class ReviewController extends Controller
         }
     }
 
-    /**
-     * Delete a reply.
-     */
     public function destroyReply(ReviewReply $reply)
     {
         try {
+            $id = $reply->id;
             $this->reviews->deleteReply($reply);
+
+            $this->audit->logAction("Review reply deleted (ID: {$id})");
 
             return back()->with('success', 'Reply deleted.');
         } catch (\Throwable $e) {

@@ -14,12 +14,8 @@ class CartService
     public const MAX_PER_PRODUCT = 5;
     public const MAX_TOTAL_ITEMS = 15;
 
-    /**
-     * Get all cart items with product eager-loaded + stale items cleaned.
-     */
     public function getItems(User $user): Collection
     {
-        // Remove stale items (inactive / deleted products)
         $this->cleanStaleItems($user);
 
         return CartItem::with('product')
@@ -28,22 +24,14 @@ class CartService
             ->get();
     }
 
-    /**
-     * Add product to cart (or update qty if exists).
-     */
     public function add(User $user, Product $product, int $quantity = 1): CartItem
     {
-        // ── Validate product availability ──
         if (! $product->is_active) {
-            throw ValidationException::withMessages([
-                'cart' => 'This product is not available.',
-            ]);
+            throw ValidationException::withMessages(['cart' => 'This product is not available.']);
         }
 
         if ($product->stock <= 0) {
-            throw ValidationException::withMessages([
-                'cart' => 'This product is out of stock.',
-            ]);
+            throw ValidationException::withMessages(['cart' => 'This product is out of stock.']);
         }
 
         $quantity = max(1, (int) $quantity);
@@ -53,7 +41,6 @@ class CartService
                 ->where('product_id', $product->id)
                 ->first();
 
-            // ── Existing item → update quantity ──
             if ($existing) {
                 $newQty = $existing->quantity + $quantity;
 
@@ -70,11 +57,9 @@ class CartService
                 }
 
                 $existing->update(['quantity' => $newQty]);
-
                 return $existing->fresh();
             }
 
-            // ── New item → check total limit ──
             $currentTotal = CartItem::where('user_id', $user->id)->count();
 
             if ($currentTotal >= self::MAX_TOTAL_ITEMS) {
@@ -103,24 +88,17 @@ class CartService
         });
     }
 
-    /**
-     * Update quantity of a cart item.
-     */
     public function update(CartItem $item, int $quantity): CartItem
     {
         $quantity = max(1, (int) $quantity);
         $product  = $item->product;
 
         if (! $product) {
-            throw ValidationException::withMessages([
-                'cart' => 'Product is no longer available.',
-            ]);
+            throw ValidationException::withMessages(['cart' => 'Product is no longer available.']);
         }
 
         if (! $product->is_active) {
-            throw ValidationException::withMessages([
-                'cart' => 'This product is not available.',
-            ]);
+            throw ValidationException::withMessages(['cart' => 'This product is not available.']);
         }
 
         if ($quantity > self::MAX_PER_PRODUCT) {
@@ -136,45 +114,29 @@ class CartService
         }
 
         $item->update(['quantity' => $quantity]);
-
         return $item->fresh();
     }
 
-    /**
-     * Remove a cart item.
-     */
     public function remove(CartItem $item): void
     {
         $item->delete();
     }
 
-    /**
-     * Clear entire cart.
-     */
     public function clear(User $user): void
     {
         CartItem::where('user_id', $user->id)->delete();
     }
 
-    /**
-     * Cart total item count (sum of quantities).
-     */
     public function getCount(User $user): int
     {
         return (int) CartItem::where('user_id', $user->id)->sum('quantity');
     }
 
-    /**
-     * Number of unique products.
-     */
     public function getUniqueCount(User $user): int
     {
         return CartItem::where('user_id', $user->id)->count();
     }
 
-    /**
-     * Calculate subtotal (sum of line totals).
-     */
     public function getSubtotal(User $user): float
     {
         $subtotal = 0;
@@ -186,17 +148,11 @@ class CartService
         return round($subtotal, 2);
     }
 
-    /**
-     * Check if cart is empty.
-     */
     public function isEmpty(User $user): bool
     {
         return $this->getUniqueCount($user) === 0;
     }
 
-    /**
-     * Remove items where product is inactive or deleted.
-     */
     protected function cleanStaleItems(User $user): void
     {
         CartItem::where('user_id', $user->id)

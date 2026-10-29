@@ -19,7 +19,6 @@ class CartItem extends Model
         'quantity' => 'integer',
     ];
 
-    // ── Relations ──
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -30,23 +29,14 @@ class CartItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    // ── Helpers ──
-
-    /**
-     * Line total (price × qty).
-     */
     public function getLineTotalAttribute(): float
     {
         if (! $this->product) {
             return 0;
         }
-
         return (float) $this->product->final_price_bdt * $this->quantity;
     }
 
-    /**
-     * Unit price (for snapshot).
-     */
     public function getUnitPriceAttribute(): float
     {
         return (float) ($this->product->final_price_bdt ?? 0);

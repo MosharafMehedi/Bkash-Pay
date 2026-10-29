@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Services\AuditLogService;
 use App\Services\CategoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -11,13 +12,11 @@ use Illuminate\Validation\ValidationException;
 
 class CategoryController extends Controller
 {
-    public function __construct(protected CategoryService $categories)
-    {
-    }
+    public function __construct(
+        protected CategoryService $categories,
+        protected AuditLogService $audit
+    ) {}
 
-    /**
-     * List all categories.
-     */
     public function index(Request $request)
     {
         $categories = $this->categories->getForAdminList(
@@ -30,9 +29,6 @@ class CategoryController extends Controller
         return view('admin.categories.index', compact('categories', 'stats'));
     }
 
-    /**
-     * Show create form.
-     */
     public function create()
     {
         $parents = $this->categories->getParentOptions();
@@ -40,9 +36,6 @@ class CategoryController extends Controller
         return view('admin.categories.create', compact('parents'));
     }
 
-    /**
-     * Store new category.
-     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -63,7 +56,13 @@ class CategoryController extends Controller
         $data['sort_order']  = (int) ($data['sort_order'] ?? 0);
 
         try {
-            $this->categories->createCategory($data);
+            $category = $this->categories->createCategory($data);
+
+            $this->audit->logAction(
+                "Category created: {$category->name} (ID: {$category->id})",
+                $category,
+                ['new' => $category->only(['name', 'is_active', 'is_featured'])]
+            );
 
             return redirect()->route('admin.categories.index')
                 ->with('success', 'Category created successfully.');
@@ -75,9 +74,6 @@ class CategoryController extends Controller
         }
     }
 
-    /**
-     * Show edit form.
-     */
     public function edit(Category $category)
     {
         $parents = $this->categories->getParentOptions($category->id);
@@ -85,9 +81,6 @@ class CategoryController extends Controller
         return view('admin.categories.edit', compact('category', 'parents'));
     }
 
-    /**
-     * Update category.
-     */
     public function update(Request $request, Category $category)
     {
         $data = $request->validate([
@@ -120,13 +113,15 @@ class CategoryController extends Controller
         }
     }
 
-    /**
-     * Delete category.
-     */
     public function destroy(Category $category)
     {
         try {
+            $name = $category->name;
+            $id = $category->id;
+
             $this->categories->deleteCategory($category);
+
+            $this->audit->logAction("Category deleted: {$name} (ID: {$id})");
 
             return back()->with('success', 'Category deleted. Products moved to uncategorized.');
         } catch (\Throwable $e) {
@@ -135,9 +130,6 @@ class CategoryController extends Controller
         }
     }
 
-    /**
-     * Toggle active status.
-     */
     public function toggle(Category $category)
     {
         try {
@@ -150,9 +142,6 @@ class CategoryController extends Controller
         }
     }
 
-    /**
-     * Toggle featured status.
-     */
     public function toggleFeatured(Category $category)
     {
         try {
@@ -165,9 +154,6 @@ class CategoryController extends Controller
         }
     }
 
-    /**
-     * Remove category image.
-     */
     public function removeImage(Category $category)
     {
         try {

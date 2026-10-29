@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\Mail;
 
 class NewsletterController extends Controller
 {
-    /**
-     * Subscribe to newsletter.
-     */
     public function subscribe(Request $request)
     {
         $request->validate([
@@ -22,38 +19,34 @@ class NewsletterController extends Controller
         $email = strtolower(trim($request->email));
 
         try {
-            // Check if already subscribed
             $existing = NewsletterSubscriber::where('email', $email)->first();
 
             if ($existing) {
-                // Reactivate if inactive
                 if (! $existing->is_active) {
                     $existing->update([
-                        'is_active' => true,
-                        'subscribed_at' => now(),
+                        'is_active'       => true,
+                        'subscribed_at'   => now(),
                         'unsubscribed_at' => null,
                     ]);
 
                     return response()->json([
-                        'ok' => true,
+                        'ok'      => true,
                         'message' => 'Welcome back! You have been resubscribed.',
                     ]);
                 }
 
                 return response()->json([
-                    'ok' => true,
+                    'ok'      => true,
                     'message' => 'You are already subscribed to our newsletter.',
                 ]);
             }
 
-            // Create new subscriber
             $subscriber = NewsletterSubscriber::create([
-                'email' => $email,
-                'ip_address' => $request->ip(),
+                'email'         => $email,
+                'ip_address'    => $request->ip(),
                 'subscribed_at' => now(),
             ]);
 
-            // Send welcome email
             try {
                 Mail::to($email)->send(new NewsletterWelcomeMail($subscriber));
             } catch (\Throwable $e) {
@@ -61,22 +54,19 @@ class NewsletterController extends Controller
             }
 
             return response()->json([
-                'ok' => true,
+                'ok'      => true,
                 'message' => 'Successfully subscribed! Check your email.',
             ]);
         } catch (\Throwable $e) {
             Log::error('Newsletter subscribe failed: ' . $e->getMessage());
 
             return response()->json([
-                'ok' => false,
+                'ok'      => false,
                 'message' => 'Subscription failed. Please try again.',
             ], 500);
         }
     }
 
-    /**
-     * Unsubscribe via token.
-     */
     public function unsubscribe(string $token)
     {
         $subscriber = NewsletterSubscriber::where('token', $token)->first();

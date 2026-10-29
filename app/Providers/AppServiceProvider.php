@@ -8,23 +8,19 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
+        // ═══ Admin bypasses all permission checks ═══
         Gate::before(function ($user, $ability) {
             return $user->hasRole('admin') ? true : null;
-            Blade::component('welcome-layout', \App\View\Components\WelcomeLayout::class);
-
         });
+
+        // ═══ Blade component alias ═══
+        Blade::component('welcome-layout', \App\View\Components\WelcomeLayout::class);
     }
 }

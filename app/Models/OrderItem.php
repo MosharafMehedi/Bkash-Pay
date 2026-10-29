@@ -16,6 +16,8 @@ class OrderItem extends Model
         'quantity',
         'unit_price',
         'total_price',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -24,7 +26,6 @@ class OrderItem extends Model
         'total_price' => 'decimal:2',
     ];
 
-    // ── Relations ──
     public function order()
     {
         return $this->belongsTo(Order::class);

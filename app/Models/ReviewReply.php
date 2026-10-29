@@ -17,6 +17,8 @@ class ReviewReply extends Model
         'is_admin',
         'is_approved',
         'edited_at',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -25,7 +27,6 @@ class ReviewReply extends Model
         'edited_at'   => 'datetime',
     ];
 
-    // ── Relations ──
     public function review()
     {
         return $this->belongsTo(Review::class);
@@ -46,13 +47,11 @@ class ReviewReply extends Model
         return $this->hasMany(ReviewReply::class, 'parent_id')->oldest();
     }
 
-    // ── Scopes ──
     public function scopeApproved($q)
     {
         return $q->where('is_approved', true);
     }
 
-    // ── Helpers ──
     public function isOwnedBy(?User $user): bool
     {
         return $user && $this->user_id === $user->id;

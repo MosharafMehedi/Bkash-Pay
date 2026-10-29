@@ -11,13 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 class ReviewController extends Controller
 {
-    public function __construct(protected ReviewService $reviews)
-    {
-    }
+    public function __construct(protected ReviewService $reviews) {}
 
-    /**
-     * Store a new review.
-     */
     public function store(Request $request, Product $product)
     {
         $data = $request->validate([
@@ -28,7 +23,6 @@ class ReviewController extends Controller
 
         try {
             $this->reviews->addReview(auth()->user(), $product, $data);
-
             return back()->with('success', 'Thank you for your review!');
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
@@ -38,9 +32,6 @@ class ReviewController extends Controller
         }
     }
 
-    /**
-     * Update own review.
-     */
     public function update(Request $request, Review $review)
     {
         abort_unless($review->user_id === auth()->id(), 403);
@@ -53,7 +44,6 @@ class ReviewController extends Controller
 
         try {
             $this->reviews->updateReview($review, $data);
-
             return back()->with('success', 'Review updated.');
         } catch (\Throwable $e) {
             Log::error('Review update failed: ' . $e->getMessage());
@@ -61,16 +51,12 @@ class ReviewController extends Controller
         }
     }
 
-    /**
-     * Delete own review.
-     */
     public function destroy(Review $review)
     {
         abort_unless($review->user_id === auth()->id(), 403);
 
         try {
             $this->reviews->deleteReview($review);
-
             return back()->with('success', 'Review deleted.');
         } catch (\Throwable $e) {
             Log::error('Review delete failed: ' . $e->getMessage());

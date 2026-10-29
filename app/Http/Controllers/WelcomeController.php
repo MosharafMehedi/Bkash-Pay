@@ -8,34 +8,20 @@ use App\Models\HomepageSetting;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Slider;
-use Illuminate\Support\Facades\Cache;
 
 class WelcomeController extends Controller
 {
-    /**
-     * Homepage.
-     */
     public function index()
     {
-        // ── Settings ──
         $settings = $this->getSettings();
 
-        // ── Announcements ──
-        $announcements = Announcement::active()
-            ->ordered()
-            ->take(3)
-            ->get();
+        $announcements = Announcement::active()->ordered()->take(3)->get();
 
-        // ── Sliders ──
         $sliders = collect();
         if ($settings['show_slider']) {
-            $sliders = Slider::active()
-                ->ordered()
-                ->take(5)
-                ->get();
+            $sliders = Slider::active()->ordered()->take(5)->get();
         }
 
-        // ── Categories ──
         $categories = collect();
         if ($settings['show_categories']) {
             $categories = Category::active()
@@ -46,7 +32,6 @@ class WelcomeController extends Controller
                 ->get();
         }
 
-        // ── Featured Products ──
         $featuredProducts = collect();
         if ($settings['show_featured_products']) {
             $featuredProducts = Product::active()
@@ -57,17 +42,11 @@ class WelcomeController extends Controller
                 ->get();
         }
 
-        // ── New Arrivals ──
         $newArrivals = collect();
         if ($settings['show_new_arrivals']) {
-            $newArrivals = Product::active()
-                ->with('category')
-                ->latest()
-                ->take(8)
-                ->get();
+            $newArrivals = Product::active()->with('category')->latest()->take(8)->get();
         }
 
-        // ── Deals ──
         $deals = collect();
         if ($settings['show_deals']) {
             $deals = Product::active()
@@ -78,7 +57,6 @@ class WelcomeController extends Controller
                 ->get();
         }
 
-        // ── Best Sellers ──
         $bestSellers = collect();
         if ($settings['show_best_sellers']) {
             $bestSellers = Product::active()
@@ -90,7 +68,6 @@ class WelcomeController extends Controller
                 ->get();
         }
 
-        // ── Brands (auto from products) ──
         $brands = collect();
         if ($settings['show_brands']) {
             $brands = Product::active()
@@ -102,7 +79,6 @@ class WelcomeController extends Controller
                 ->take(10);
         }
 
-        // ── Testimonials (top 5★ reviews) ──
         $testimonials = collect();
         if ($settings['show_testimonials']) {
             $testimonials = Review::with(['user', 'product'])
@@ -113,29 +89,18 @@ class WelcomeController extends Controller
                 ->take(6)
                 ->get();
 
-            // Only show if at least 3
             if ($testimonials->count() < 3) {
                 $testimonials = collect();
             }
         }
 
         return view('welcome', compact(
-            'settings',
-            'announcements',
-            'sliders',
-            'categories',
-            'featuredProducts',
-            'newArrivals',
-            'deals',
-            'bestSellers',
-            'brands',
-            'testimonials'
+            'settings', 'announcements', 'sliders', 'categories',
+            'featuredProducts', 'newArrivals', 'deals', 'bestSellers',
+            'brands', 'testimonials'
         ));
     }
 
-    /**
-     * Get homepage settings as array.
-     */
     protected function getSettings(): array
     {
         $defaults = [
@@ -149,12 +114,10 @@ class WelcomeController extends Controller
             'show_testimonials'      => true,
             'show_newsletter'        => true,
             'show_trust_badges'      => true,
-
             'site_title'             => config('app.name', 'mPay Gateway'),
             'site_tagline'           => 'Modern Payment Gateway Experience',
             'hero_title'             => 'Pick something to buy',
             'hero_subtitle'          => 'Secure checkout — explore our catalog',
-
             'heading_categories'     => 'Shop by Category',
             'heading_featured'       => 'Featured Products',
             'heading_new'            => 'New Arrivals',
@@ -162,29 +125,23 @@ class WelcomeController extends Controller
             'heading_best_sellers'   => 'Best Sellers',
             'heading_brands'         => 'Top Brands',
             'heading_testimonials'   => 'What our customers say',
-
             'trust_badge_1_icon'     => '🚚',
             'trust_badge_1_title'    => 'Free Shipping',
             'trust_badge_1_sub'      => 'On orders ৳500+',
-
             'trust_badge_2_icon'     => '🔒',
             'trust_badge_2_title'    => 'Secure Payment',
             'trust_badge_2_sub'      => '256-bit SSL',
-
             'trust_badge_3_icon'     => '↩️',
             'trust_badge_3_title'    => 'Easy Returns',
             'trust_badge_3_sub'      => '7-day return',
-
             'trust_badge_4_icon'     => '📞',
             'trust_badge_4_title'    => '24/7 Support',
             'trust_badge_4_sub'      => 'Always available',
-
             'social_facebook'        => '',
             'social_instagram'       => '',
             'social_twitter'         => '',
             'social_youtube'         => '',
             'social_whatsapp'        => '',
-
             'contact_email'          => 'hello@mpay.com',
             'contact_phone'          => '+880 1XXX-XXXXXX',
             'contact_address'        => '123 Main Street, Dhaka',

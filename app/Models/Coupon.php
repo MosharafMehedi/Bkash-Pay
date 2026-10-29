@@ -1,15 +1,14 @@
 <?php
 
 namespace App\Models;
-
-use App\Models\CouponUsage;
+use App\Services\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Coupon extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Auditable;
 
     protected $fillable = [
         'code',
@@ -25,25 +24,53 @@ class Coupon extends Model
         'starts_at',
         'expires_at',
         'is_active',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
-        'starts_at'    => 'datetime',
-        'expires_at'   => 'datetime',
-        'is_active'    => 'boolean',
-        'value'        => 'decimal:2',
-        'min_order'    => 'decimal:2',
-        'max_discount' => 'decimal:2',
+        'starts_at'        => 'datetime',
+        'expires_at'       => 'datetime',
+        'is_active'        => 'boolean',
+        'value'            => 'decimal:2',
+        'min_order'        => 'decimal:2',
+        'max_discount'     => 'decimal:2',
+        'usage_limit'      => 'integer',
+        'used_count'       => 'integer',
+        'per_user_limit'   => 'integer',
     ];
+
+    // ═══ Relations ═══
 
     public function usages()
     {
         return $this->hasMany(CouponUsage::class);
     }
 
-    /**
-     * Calculate discount amount for a given subtotal.
-     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    // ═══ Scopes ═══
+
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+
+    // ═══ Business Logic ═══
+
     public function discountFor(float $subtotal): float
     {
         if ($this->type === 'percent') {
@@ -54,7 +81,6 @@ class Coupon extends Model
             return round($discount, 2);
         }
 
-        // Fixed
         return min((float) $this->value, $subtotal);
     }
 
@@ -82,10 +108,5 @@ class Coupon extends Model
         }
         $used = $this->usages()->where('user_id', $userId)->count();
         return $used >= $this->per_user_limit;
-    }
-
-    public function orders()
-    {
-        return $this->hasMany(Order::class);
     }
 }

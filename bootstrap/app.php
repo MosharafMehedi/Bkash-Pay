@@ -21,9 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'sslcommerz/ipn',
         ]);
         $middleware->alias([
-            'role'               => RoleMiddleware::class,
-            'permission'         => PermissionMiddleware::class,
-            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'role'               => \App\Http\Middleware\RoleMiddleware::class,
+            'permission'         => \App\Http\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'dynamic_permission' => \App\Http\Middleware\DynamicPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

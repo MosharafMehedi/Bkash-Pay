@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use App\Models\ReviewReply;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Review extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -20,6 +20,8 @@ class Review extends Model
         'is_approved',
         'is_verified',
         'edited_at',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -29,7 +31,6 @@ class Review extends Model
         'edited_at'   => 'datetime',
     ];
 
-    // ── Relations ──
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -50,9 +51,6 @@ class Review extends Model
         return $this->hasMany(ReviewReply::class)->oldest();
     }
 
-    /**
-     * Only top-level replies (no parent).
-     */
     public function topLevelReplies()
     {
         return $this->hasMany(ReviewReply::class)
@@ -60,7 +58,6 @@ class Review extends Model
             ->oldest();
     }
 
-    // ── Scopes ──
     public function scopeApproved($q)
     {
         return $q->where('is_approved', true);
@@ -71,7 +68,6 @@ class Review extends Model
         return $q->where('rating', $rating);
     }
 
-    // ── Helpers ──
     public function isOwnedBy(?User $user): bool
     {
         return $user && $this->user_id === $user->id;

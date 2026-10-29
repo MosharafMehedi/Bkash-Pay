@@ -20,9 +20,6 @@ use Illuminate\Support\Str;
 
 class OrderService
 {
-    /**
-     * Generate order number: ORD-2025-00001
-     */
     public function generateOrderNumber(): string
     {
         $year = now()->year;
@@ -41,9 +38,6 @@ class OrderService
         return sprintf('ORD-%d-%05d', $year, $nextSeq);
     }
 
-    /**
-     * Generate 6-char alphanumeric delivery code.
-     */
     public function generateDeliveryCode(): string
     {
         do {
@@ -54,9 +48,6 @@ class OrderService
         return $code;
     }
 
-    /**
-     * Create an order from the user's cart.
-     */
     public function createFromCart(
         User $user,
         string $sourceType,
@@ -72,7 +63,6 @@ class OrderService
             $user, $sourceType, $sourceId, $deliveryData,
             $paymentStatus, $deliveryCharge, $discountAmount, $couponId, $couponCode
         ) {
-            // Load cart items
             $cartItems = CartItem::with('product')
                 ->where('user_id', $user->id)
                 ->get();
@@ -81,7 +71,6 @@ class OrderService
                 throw new \RuntimeException('Cart is empty.');
             }
 
-            // Calculate subtotal
             $subtotal = 0;
             foreach ($cartItems as $cartItem) {
                 $product = $cartItem->product;
@@ -100,7 +89,6 @@ class OrderService
             $subtotal    = round($subtotal, 2);
             $totalAmount = max($subtotal + $deliveryCharge - $discountAmount, 0);
 
-            // Create order
             $order = Order::create([
                 'user_id'                  => $user->id,
                 'order_number'             => $this->generateOrderNumber(),
@@ -111,7 +99,6 @@ class OrderService
                 'source_type'              => $sourceType,
                 'source_id'                => $sourceId,
 
-                // Legacy columns (nullable)
                 'product_id'               => null,
                 'product_name'             => null,
                 'quantity'                 => null,
@@ -138,7 +125,6 @@ class OrderService
                 'payment_status'           => $paymentStatus,
             ]);
 
-            // Create order items
             foreach ($cartItems as $cartItem) {
                 $product = $cartItem->product;
 
@@ -152,10 +138,8 @@ class OrderService
                 ]);
             }
 
-            // Log initial status
             $this->logStatus($order, 'pending', null, 'Order placed');
 
-            // Send order placed email
             try {
                 Mail::to($order->user->email)->send(new OrderPlacedMail($order));
             } catch (\Throwable $e) {
@@ -166,9 +150,6 @@ class OrderService
         });
     }
 
-    /**
-     * Update order status + log + email.
-     */
     public function updateStatus(
         Order $order,
         string $newStatus,
@@ -188,17 +169,14 @@ class OrderService
                 $update[$timeline] = now();
             }
 
-            // COD → paid when delivered/picked up
             if (in_array($newStatus, ['delivered', 'picked_up']) && $order->payment_status === 'unpaid') {
                 $update['payment_status'] = 'paid';
             }
 
             $order->update($update);
 
-            // Log
             $this->logStatus($order, $newStatus, $changedBy?->id, $note);
 
-            // Email — ONLY for delivery complete statuses
             $notifyStatuses = ['delivered', 'picked_up'];
 
             if ($sendEmail && in_array($newStatus, $notifyStatuses) && $order->user?->email) {
@@ -213,9 +191,6 @@ class OrderService
         });
     }
 
-    /**
-     * Verify delivery code.
-     */
     public function verifyDeliveryCode(string $code, Order $order): array
     {
         $code = strtoupper(trim($code));
@@ -254,9 +229,6 @@ class OrderService
         return [true, 'Delivery verified successfully!', $order->fresh()];
     }
 
-    /**
-     * Settle cart — stock decrement + coupon + balance.
-     */
     public function settleCart(
         User $user,
         Order $order,
@@ -266,7 +238,6 @@ class OrderService
         float $balanceUsedUsd = 0
     ): bool {
         return DB::transaction(function () use ($user, $order, $coupon, $discountAmount, $balanceUsedBdt, $balanceUsedUsd) {
-            // Stock decrement per item
             foreach ($order->items as $orderItem) {
                 $product = Product::find($orderItem->product_id);
 
@@ -284,7 +255,6 @@ class OrderService
                 }
             }
 
-            // Coupon redeem
             if ($coupon && $discountAmount > 0) {
                 $coupon->increment('used_count');
 
@@ -297,7 +267,6 @@ class OrderService
                 ]);
             }
 
-            // Balance deduct
             if ($balanceUsedBdt > 0) {
                 $user->decrement('balance_bdt', $balanceUsedBdt);
             }
@@ -305,16 +274,12 @@ class OrderService
                 $user->decrement('balance_usd', $balanceUsedUsd);
             }
 
-            // Cart clear
             CartItem::where('user_id', $user->id)->delete();
 
             return true;
         });
     }
 
-    /**
-     * Calculate delivery charge for a city + order amount.
-     */
     public function calculateDeliveryCharge(?string $city, float $orderAmount): array
     {
         if (! $city) {
@@ -339,9 +304,6 @@ class OrderService
         ];
     }
 
-    /**
-     * Cancel order + return stock.
-     */
     public function cancelOrder(Order $order, ?User $cancelledBy = null, ?string $note = null): Order
     {
         if (in_array($order->status, ['delivered', 'picked_up'])) {
@@ -349,7 +311,6 @@ class OrderService
         }
 
         return DB::transaction(function () use ($order, $cancelledBy, $note) {
-            // Return stock per item
             foreach ($order->items as $orderItem) {
                 $product = Product::find($orderItem->product_id);
                 if ($product && $order->status !== 'cancelled') {
@@ -362,9 +323,6 @@ class OrderService
         });
     }
 
-    /**
-     * Return order.
-     */
     public function returnOrder(Order $order, ?User $returnedBy = null, ?string $note = null): Order
     {
         return DB::transaction(function () use ($order, $returnedBy, $note) {
@@ -379,8 +337,6 @@ class OrderService
             return $this->updateStatus($order, 'returned', $returnedBy, $note);
         });
     }
-
-    // ── Private helpers ──
 
     private function logStatus(Order $order, string $status, ?int $changedBy = null, ?string $note = null): void
     {

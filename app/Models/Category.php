@@ -1,16 +1,16 @@
 <?php
 
 namespace App\Models;
-
+use App\Services\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Storage;
 
 class Category extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Auditable;
 
     protected $fillable = [
         'parent_id',
@@ -24,6 +24,8 @@ class Category extends Model
         'sort_order',
         'meta_title',
         'meta_description',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -32,7 +34,8 @@ class Category extends Model
         'sort_order'  => 'integer',
     ];
 
-    // ── Auto slug ──
+    // ═══ Auto slug ═══
+
     protected static function booted(): void
     {
         static::creating(function ($category) {
@@ -57,7 +60,7 @@ class Category extends Model
         while (
             static::withTrashed()
                 ->where('slug', $slug)
-                ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
                 ->exists()
         ) {
             $slug = $baseSlug . '-' . $counter;
@@ -67,7 +70,8 @@ class Category extends Model
         return $slug;
     }
 
-    // ── Relations ──
+    // ═══ Relations ═══
+
     public function parent()
     {
         return $this->belongsTo(Category::class, 'parent_id');
@@ -90,7 +94,18 @@ class Category extends Model
         return $this->hasMany(Product::class);
     }
 
-    // ── Scopes ──
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    // ═══ Scopes ═══
+
     public function scopeActive($q)
     {
         return $q->where('is_active', true);
@@ -111,7 +126,8 @@ class Category extends Model
         return $q->orderBy('sort_order')->orderBy('name');
     }
 
-    // ── Helpers ──
+    // ═══ Helpers ═══
+
     public function isParent(): bool
     {
         return $this->parent_id === null;
@@ -132,14 +148,9 @@ class Category extends Model
         return $this->products()->exists();
     }
 
-    public function productsCount(): int
-    {
-        return $this->products()->count();
-    }
-
     public function getImageUrlAttribute(): string
     {
-        if ($this->image && \Storage::disk('public')->exists($this->image)) {
+        if ($this->image && Storage::disk('public')->exists($this->image)) {
             return url('storage/' . $this->image);
         }
 
@@ -148,8 +159,7 @@ class Category extends Model
 
     public function hasImage(): bool
     {
-        return ! empty($this->image)
-            && Storage::disk('public')->exists($this->image);
+        return ! empty($this->image) && Storage::disk('public')->exists($this->image);
     }
 
     public function getRouteKeyName(): string

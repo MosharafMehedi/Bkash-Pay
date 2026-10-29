@@ -1,18 +1,20 @@
 <?php
 
 namespace App\Models;
-
+use App\Services\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Product extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Auditable;
 
     protected $fillable = [
+        'category_id',
         'name',
         'slug',
         'subtitle',
@@ -20,10 +22,6 @@ class Product extends Model
         'price_bdt',
         'price_usd',
         'discount_price',
-        'category',
-        'category_id',
-        'image',
-        'gallery',
         'quantity',
         'stock',
         'sku',
@@ -31,14 +29,18 @@ class Product extends Model
         'tags',
         'rating',
         'review_count',
-        'is_active',
         'is_featured',
-        'published_at',
-        'meta_title',
-        'meta_description',
         'is_deal',
         'deal_price',
         'deal_ends_at',
+        'is_active',
+        'image',
+        'gallery',
+        'published_at',
+        'meta_title',
+        'meta_description',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -46,12 +48,20 @@ class Product extends Model
         'tags'         => 'array',
         'is_active'    => 'boolean',
         'is_featured'  => 'boolean',
+        'is_deal'      => 'boolean',
         'published_at' => 'datetime',
-        'rating'       => 'decimal:2',
-        'is_deal' => 'boolean',
-        'deal_price' => 'decimal:2',
         'deal_ends_at' => 'datetime',
+        'price_bdt'    => 'decimal:2',
+        'price_usd'    => 'decimal:2',
+        'discount_price' => 'decimal:2',
+        'deal_price'   => 'decimal:2',
+        'rating'       => 'decimal:2',
+        'quantity'     => 'integer',
+        'stock'        => 'integer',
+        'review_count' => 'integer',
     ];
+
+    // ═══ Boot ═══
 
     protected static function booted(): void
     {
@@ -61,7 +71,6 @@ class Product extends Model
             }
         });
 
-        // SKU generate AFTER insert (uses auto-increment ID)
         static::created(function ($product) {
             if (empty($product->sku)) {
                 $product->updateQuietly([
@@ -71,63 +80,13 @@ class Product extends Model
         });
     }
 
-    // Scopes
-    public function scopeActive($q)
+    // ═══ Relations ═══
+
+    public function category()
     {
-        return $q->where('is_active', true);
-    }
-    public function scopeFeatured($q)
-    {
-        return $q->where('is_featured', true);
-    }
-    public function scopeInStock($q)
-    {
-        return $q->where('stock', '>', 0);
+        return $this->belongsTo(Category::class);
     }
 
-    // Helpers
-    public function getFinalPriceBdtAttribute(): float
-    {
-        return (float) ($this->discount_price ?? $this->price_bdt);
-    }
-
-    public function getFinalPriceUsdAttribute(): float
-    {
-        return (float) $this->price_usd;
-    }
-
-    public function getStockBadgeAttribute(): array
-    {
-        if ($this->stock <= 0) return ['label' => 'Out of stock', 'class' => 'stock-out'];
-        if ($this->stock <= 3) return ['label' => "Only {$this->stock} left", 'class' => 'stock-low'];
-        return ['label' => 'In stock', 'class' => 'stock-ok'];
-    }
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
-    /**
-     * Atomically decrement stock & quantity by 1.
-     * Returns false if out of stock (race-safe).
-     */
-    public function decrementStock(): bool
-    {
-        $affected = static::where('id', $this->id)
-            ->where('stock', '>', 0)
-            ->update([
-                'stock'    => DB::raw('stock - 1'),
-                'quantity' => DB::raw('GREATEST(quantity - 1, 0)'),
-            ]);
-
-        if ($affected) {
-            $this->refresh();
-            return true;
-        }
-
-        return false;
-    }
     public function orders()
     {
         return $this->hasMany(Order::class);
@@ -143,7 +102,6 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    // ── Review relations ──
     public function reviews()
     {
         return $this->hasMany(Review::class);
@@ -154,23 +112,31 @@ class Product extends Model
         return $this->hasMany(Review::class)->where('is_approved', true);
     }
 
-    // Helper — average rating recalculate
-    public function recalculateRating(): void
+    public function createdBy()
     {
-        $stats = $this->reviews()
-            ->where('is_approved', true)
-            ->selectRaw('AVG(rating) as avg_rating, COUNT(*) as total')
-            ->first();
-
-        $this->update([
-            'rating'       => round($stats->avg_rating ?? 0, 2),
-            'review_count' => $stats->total ?? 0,
-        ]);
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function category()
+    public function updatedBy()
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    // ═══ Scopes ═══
+
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+
+    public function scopeFeatured($q)
+    {
+        return $q->where('is_featured', true);
+    }
+
+    public function scopeInStock($q)
+    {
+        return $q->where('stock', '>', 0);
     }
 
     public function scopeDeals($q)
@@ -180,6 +146,18 @@ class Product extends Model
             ->where(function ($w) {
                 $w->whereNull('deal_ends_at')->orWhere('deal_ends_at', '>=', now());
             });
+    }
+
+    // ═══ Price Helpers ═══
+
+    public function getFinalPriceBdtAttribute(): float
+    {
+        return (float) ($this->discount_price ?? $this->price_bdt);
+    }
+
+    public function getFinalPriceUsdAttribute(): float
+    {
+        return (float) $this->price_usd;
     }
 
     public function isDealActive(): bool
@@ -196,5 +174,72 @@ class Product extends Model
         }
 
         return (float) ($this->discount_price ?? $this->price_bdt);
+    }
+
+    // ═══ Badge ═══
+
+    public function getStockBadgeAttribute(): array
+    {
+        if ($this->stock <= 0) {
+            return ['label' => 'Out of stock', 'class' => 'stock-out'];
+        }
+        if ($this->stock <= 3) {
+            return ['label' => "Only {$this->stock} left", 'class' => 'stock-low'];
+        }
+        return ['label' => 'In stock', 'class' => 'stock-ok'];
+    }
+
+    // ═══ Media ═══
+
+    public function getImageUrlAttribute(): string
+    {
+        if ($this->image && Storage::disk('public')->exists($this->image)) {
+            return Storage::disk('public')->url($this->image);
+        }
+        return '';
+    }
+
+    public function hasImage(): bool
+    {
+        return ! empty($this->image) && Storage::disk('public')->exists($this->image);
+    }
+
+    // ═══ Stock ═══
+
+    public function decrementStock(int $qty = 1): bool
+    {
+        $affected = static::where('id', $this->id)
+            ->where('stock', '>=', $qty)
+            ->update([
+                'stock'    => DB::raw('stock - ' . $qty),
+                'quantity' => DB::raw('GREATEST(quantity - ' . $qty . ', 0)'),
+            ]);
+
+        if ($affected) {
+            $this->refresh();
+            return true;
+        }
+
+        return false;
+    }
+
+    // ═══ Rating ═══
+
+    public function recalculateRating(): void
+    {
+        $stats = $this->reviews()
+            ->where('is_approved', true)
+            ->selectRaw('AVG(rating) as avg_rating, COUNT(*) as total')
+            ->first();
+
+        $this->update([
+            'rating'       => round($stats->avg_rating ?? 0, 2),
+            'review_count' => $stats->total ?? 0,
+        ]);
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
     }
 }

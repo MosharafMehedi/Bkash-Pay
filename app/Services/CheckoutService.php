@@ -11,9 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 class CheckoutService
 {
-    /**
-     * Resolve pricing for a single product (legacy).
-     */
     public function resolve(User $user, Product $product, ?string $couponCode = null): array
     {
         $subtotalBdt = (float) $product->final_price_bdt;
@@ -61,9 +58,6 @@ class CheckoutService
         ];
     }
 
-    /**
-     * Resolve cart totals — multi-item.
-     */
     public function resolveCart(User $user, ?string $couponCode = null): array
     {
         $cartItems = CartItem::with('product')
@@ -125,9 +119,6 @@ class CheckoutService
         ];
     }
 
-    /**
-     * Validate coupon.
-     */
     private function resolveCoupon(User $user, float $subtotalBdt, float $subtotalUsd, string $code): array
     {
         $coupon = Coupon::where('code', strtoupper(trim($code)))->first();
@@ -158,9 +149,6 @@ class CheckoutService
         return [$coupon, $discountBdt, $discountUsd, null];
     }
 
-    /**
-     * Sync delivery info to user profile (if empty).
-     */
     public function syncUserProfile(User $user, array $data): void
     {
         $updates = [];
@@ -183,9 +171,6 @@ class CheckoutService
         }
     }
 
-    /**
-     * Settle: legacy single-product settle.
-     */
     public function settle(
         User $user,
         Product $product,

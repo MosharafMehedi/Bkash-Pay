@@ -10,20 +10,27 @@ class Announcement extends Model
     use HasFactory;
 
     protected $fillable = [
-        'text', 'icon', 'link', 'bg_color',
-        'sort_order', 'is_active', 'is_dismissible',
-        'starts_at', 'ends_at',
+        'text',
+        'icon',
+        'link',
+        'bg_color',
+        'sort_order',
+        'is_active',
+        'is_dismissible',
+        'starts_at',
+        'ends_at',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'      => 'boolean',
         'is_dismissible' => 'boolean',
-        'sort_order' => 'integer',
-        'starts_at' => 'datetime',
-        'ends_at' => 'datetime',
+        'sort_order'     => 'integer',
+        'starts_at'      => 'datetime',
+        'ends_at'        => 'datetime',
     ];
 
-    // ── Scopes ──
     public function scopeActive($q)
     {
         return $q->where('is_active', true)

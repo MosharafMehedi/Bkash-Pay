@@ -9,29 +9,18 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function __construct(protected ReviewService $reviews)
-    {
-    }
+    public function __construct(protected ReviewService $reviews) {}
 
-    /**
-     * Product grid with category filter.
-     */
     public function index(Request $request)
     {
         $query = Product::active()->with('category');
 
-        // Filter by category (includes children)
         if ($categorySlug = $request->query('category')) {
             $category = Category::where('slug', $categorySlug)->first();
 
             if ($category) {
                 $categoryIds = [$category->id];
-
-                // Include children categories
-                $childIds = Category::where('parent_id', $category->id)
-                    ->pluck('id')
-                    ->toArray();
-
+                $childIds = Category::where('parent_id', $category->id)->pluck('id')->toArray();
                 $categoryIds = array_merge($categoryIds, $childIds);
 
                 $query->whereIn('category_id', $categoryIds);
@@ -40,21 +29,15 @@ class ProductController extends Controller
 
         $products = $query->orderBy('id')->get();
 
-        // Categories for filter tabs
         $categories = Category::active()
             ->whereNull('parent_id')
             ->ordered()
-            ->withCount(['products' => function ($q) {
-                $q->where('is_active', true);
-            }])
+            ->withCount(['products' => fn ($q) => $q->where('is_active', true)])
             ->get();
 
         return view('products.index', compact('products', 'categories'));
     }
 
-    /**
-     * Product details page.
-     */
     public function show(Product $product)
     {
         if (! $product->is_active) {
@@ -63,7 +46,6 @@ class ProductController extends Controller
 
         $product->load('category');
 
-        // Related products (same category)
         $relatedProducts = collect();
 
         if ($product->category_id) {
@@ -89,28 +71,22 @@ class ProductController extends Controller
             $relatedProducts = $relatedProducts->merge($extra);
         }
 
-        // Reviews
         $filters = [
             'rating' => request('rating'),
             'sort'   => request('sort', 'newest'),
         ];
 
-        $reviews          = $this->reviews->getReviews($product, $filters, 10);
-        $ratingBreakdown  = $this->reviews->getRatingBreakdown($product);
-        $userReview       = auth()->check()
+        $reviews = $this->reviews->getReviews($product, $filters, 10);
+        $ratingBreakdown = $this->reviews->getRatingBreakdown($product);
+        $userReview = auth()->check()
             ? $this->reviews->getUserReview(auth()->user(), $product)
             : null;
-        $canReview        = auth()->check()
+        $canReview = auth()->check()
             && $this->reviews->canReview(auth()->user(), $product)
             && ! $userReview;
 
         return view('products.show', compact(
-            'product',
-            'relatedProducts',
-            'reviews',
-            'ratingBreakdown',
-            'userReview',
-            'canReview'
+            'product', 'relatedProducts', 'reviews', 'ratingBreakdown', 'userReview', 'canReview'
         ));
     }
 }

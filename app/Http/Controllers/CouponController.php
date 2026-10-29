@@ -2,19 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Services\CheckoutService;
 use Illuminate\Http\Request;
 
 class CouponController extends Controller
 {
-    public function __construct(protected CheckoutService $checkout)
-    {
-    }
+    public function __construct(protected CheckoutService $checkout) {}
 
-    /**
-     * AJAX: validate coupon for the current cart.
-     */
     public function apply(Request $request)
     {
         $request->validate([
@@ -22,7 +16,6 @@ class CouponController extends Controller
         ]);
 
         $user = $request->user();
-
         $summary = $this->checkout->resolveCart($user, $request->code);
 
         if ($summary['coupon_error']) {

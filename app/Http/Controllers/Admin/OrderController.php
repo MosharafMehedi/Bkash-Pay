@@ -6,24 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\DeliveryStatusLog;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
-    public function __construct(protected OrderService $orderService)
-    {
-    }
+    public function __construct(
+        protected OrderService $orderService,
+        protected AuditLogService $audit
+    ) {}
 
-    /**
-     * Order list with filters + stats.
-     */
     public function index(Request $request)
     {
         $query = Order::with(['user', 'product', 'deliveryMan', 'vendor']);
 
-        // Search
         if ($q = $request->query('q')) {
             $query->where(function ($w) use ($q) {
                 $w->where('order_number', 'like', "%{$q}%")
@@ -33,24 +31,20 @@ class OrderController extends Controller
             });
         }
 
-        // Filter by status
         if ($status = $request->query('status')) {
             $query->where('status', $status);
         }
 
-        // Filter by order type
         if ($type = $request->query('type')) {
             $query->where('order_type', $type);
         }
 
-        // Filter by payment status
         if ($payment = $request->query('payment')) {
             $query->where('payment_status', $payment);
         }
 
         $orders = $query->latest()->paginate(15)->withQueryString();
 
-        // Stats
         $stats = [
             'total'      => Order::count(),
             'pending'    => Order::where('status', 'pending')->count(),
@@ -63,31 +57,23 @@ class OrderController extends Controller
         return view('admin.orders.index', compact('orders', 'stats'));
     }
 
-    /**
-     * Order detail with all info + actions.
-     */
     public function show(Order $order)
     {
         $order->load(['user', 'product', 'coupon', 'deliveryMan', 'vendor', 'statusLogs.user']);
 
-        // Delivery men list (role: delivery_man)
         $deliveryMen = User::role('delivery_man')
-            ->where('status', 1)
+            ->where('is_active', 1)
             ->orderBy('name')
             ->get();
 
-        // Vendors list (role: vendor)
         $vendors = User::role('vendor')
-            ->where('status', 1)
+            ->where('is_active', 1)
             ->orderBy('name')
             ->get();
 
         return view('admin.orders.show', compact('order', 'deliveryMen', 'vendors'));
     }
 
-    /**
-     * Update order status.
-     */
     public function updateStatus(Request $request, Order $order)
     {
         $request->validate([
@@ -95,34 +81,30 @@ class OrderController extends Controller
             'note'   => 'nullable|string|max:500',
         ]);
 
+        $oldStatus = $order->status;
+
         try {
-            // Cancel with stock return
             if ($request->status === 'cancelled') {
                 $this->orderService->cancelOrder($order, auth()->user(), $request->note);
-            }
-            // Return with stock return
-            elseif ($request->status === 'returned') {
+            } elseif ($request->status === 'returned') {
                 $this->orderService->returnOrder($order, auth()->user(), $request->note);
+            } else {
+                $this->orderService->updateStatus($order, $request->status, auth()->user(), $request->note);
             }
-            // Normal status update
-            else {
-                $this->orderService->updateStatus(
-                    $order,
-                    $request->status,
-                    auth()->user(),
-                    $request->note
-                );
-            }
+
+            $this->audit->logAction(
+                "Order {$order->order_number}: {$oldStatus} → {$request->status}",
+                $order,
+                ['old' => ['status' => $oldStatus], 'new' => ['status' => $request->status]]
+            );
 
             return back()->with('success', 'Order status updated to ' . str_replace('_', ' ', $request->status) . '.');
         } catch (\Throwable $e) {
+            Log::error('Order status update failed: ' . $e->getMessage());
             return back()->with('error', $e->getMessage());
         }
     }
 
-    /**
-     * Assign delivery man / vendor to order.
-     */
     public function assign(Request $request, Order $order)
     {
         $request->validate([
@@ -140,27 +122,33 @@ class OrderController extends Controller
             return back()->with('error', 'Please select a vendor.');
         }
 
-        $order->update([
-            'delivery_method' => $request->delivery_method,
-            'assigned_to'     => $request->delivery_method === 'self' ? $request->assigned_to : null,
-            'vendor_id'       => $request->delivery_method === 'vendor' ? $request->vendor_id : null,
-            'tracking_number' => $request->tracking_number,
-        ]);
+        try {
+            $order->update([
+                'delivery_method' => $request->delivery_method,
+                'assigned_to'     => $request->delivery_method === 'self' ? $request->assigned_to : null,
+                'vendor_id'       => $request->delivery_method === 'vendor' ? $request->vendor_id : null,
+                'tracking_number' => $request->tracking_number,
+            ]);
 
-        // Log
-        DeliveryStatusLog::create([
-            'order_id'   => $order->id,
-            'status'     => $order->status,
-            'changed_by' => auth()->id(),
-            'note'       => 'Assigned via ' . $request->delivery_method,
-        ]);
+            DeliveryStatusLog::create([
+                'order_id'   => $order->id,
+                'status'     => $order->status,
+                'changed_by' => auth()->id(),
+                'note'       => 'Assigned via ' . $request->delivery_method,
+            ]);
 
-        return back()->with('success', 'Delivery assignment updated.');
+            $this->audit->logAction(
+                "Order {$order->order_number} assigned via {$request->delivery_method}",
+                $order
+            );
+
+            return back()->with('success', 'Delivery assignment updated.');
+        } catch (\Throwable $e) {
+            Log::error('Order assign failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not assign delivery.');
+        }
     }
 
-    /**
-     * Cancel order.
-     */
     public function cancel(Request $request, Order $order)
     {
         $request->validate([
@@ -169,15 +157,16 @@ class OrderController extends Controller
 
         try {
             $this->orderService->cancelOrder($order, auth()->user(), $request->note);
+
+            $this->audit->logAction("Order {$order->order_number} cancelled", $order);
+
             return back()->with('success', 'Order cancelled.');
         } catch (\Throwable $e) {
+            Log::error('Order cancel failed: ' . $e->getMessage());
             return back()->with('error', $e->getMessage());
         }
     }
 
-    /**
-     * Mark order as returned.
-     */
     public function return(Request $request, Order $order)
     {
         $request->validate([
@@ -186,8 +175,12 @@ class OrderController extends Controller
 
         try {
             $this->orderService->returnOrder($order, auth()->user(), $request->note);
+
+            $this->audit->logAction("Order {$order->order_number} returned", $order);
+
             return back()->with('success', 'Order marked as returned.');
         } catch (\Throwable $e) {
+            Log::error('Order return failed: ' . $e->getMessage());
             return back()->with('error', $e->getMessage());
         }
     }

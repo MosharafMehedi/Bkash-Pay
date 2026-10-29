@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AnnouncementController extends Controller
 {
-    /**
-     * List all announcements.
-     */
+    public function __construct(protected AuditLogService $audit) {}
+
     public function index(Request $request)
     {
         $query = Announcement::query();
@@ -27,32 +27,32 @@ class AnnouncementController extends Controller
         $announcements = $query->ordered()->paginate(20)->withQueryString();
 
         $stats = [
-            'total'      => Announcement::count(),
-            'active'     => Announcement::where('is_active', true)->count(),
-            'inactive'   => Announcement::where('is_active', false)->count(),
-            'scheduled'  => Announcement::whereNotNull('starts_at')->orWhereNotNull('ends_at')->count(),
+            'total'     => Announcement::count(),
+            'active'    => Announcement::where('is_active', true)->count(),
+            'inactive'  => Announcement::where('is_active', false)->count(),
+            'scheduled' => Announcement::whereNotNull('starts_at')->orWhereNotNull('ends_at')->count(),
         ];
 
         return view('admin.announcements.index', compact('announcements', 'stats'));
     }
 
-    /**
-     * Show create form.
-     */
     public function create()
     {
         return view('admin.announcements.create');
     }
 
-    /**
-     * Store new announcement.
-     */
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $data['created_by'] = auth()->id();
 
         try {
-            Announcement::create($data);
+            $announcement = Announcement::create($data);
+
+            $this->audit->logAction(
+                "Announcement created: " . substr($announcement->text, 0, 50) . "...",
+                $announcement
+            );
 
             return redirect()->route('admin.announcements.index')
                 ->with('success', 'Announcement created successfully.');
@@ -62,20 +62,15 @@ class AnnouncementController extends Controller
         }
     }
 
-    /**
-     * Show edit form.
-     */
     public function edit(Announcement $announcement)
     {
         return view('admin.announcements.edit', compact('announcement'));
     }
 
-    /**
-     * Update announcement.
-     */
     public function update(Request $request, Announcement $announcement)
     {
         $data = $this->validated($request);
+        $data['updated_by'] = auth()->id();
 
         try {
             $announcement->update($data);
@@ -88,13 +83,13 @@ class AnnouncementController extends Controller
         }
     }
 
-    /**
-     * Delete announcement.
-     */
     public function destroy(Announcement $announcement)
     {
         try {
+            $text = substr($announcement->text, 0, 50);
             $announcement->delete();
+
+            $this->audit->logAction("Announcement deleted: {$text}...");
 
             return back()->with('success', 'Announcement deleted.');
         } catch (\Throwable $e) {
@@ -103,19 +98,17 @@ class AnnouncementController extends Controller
         }
     }
 
-    /**
-     * Toggle active status.
-     */
     public function toggle(Announcement $announcement)
     {
-        $announcement->update(['is_active' => ! $announcement->is_active]);
-
-        return back()->with('success', 'Status updated.');
+        try {
+            $announcement->update(['is_active' => ! $announcement->is_active]);
+            return back()->with('success', 'Status updated.');
+        } catch (\Throwable $e) {
+            Log::error('Announcement toggle failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not update status.');
+        }
     }
 
-    /**
-     * Common validation.
-     */
     private function validated(Request $request): array
     {
         $data = $request->validate([

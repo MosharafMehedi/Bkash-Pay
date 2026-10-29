@@ -13,6 +13,7 @@ class PayPalTransaction extends Model
         'product_id',
         'coupon_id',
         'order_id',
+        'paypal_order_id',
         'capture_id',
         'invoice_number',
         'customer_email',
@@ -23,7 +24,8 @@ class PayPalTransaction extends Model
         'paypal_status',
         'payer_email',
         'raw_response',
-        'order_id',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -36,16 +38,19 @@ class PayPalTransaction extends Model
     {
         return $this->belongsTo(User::class);
     }
+
     public function product()
     {
         return $this->belongsTo(Product::class);
     }
+
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
     }
+
     public function order()
     {
-        return $this->belongsTo(\App\Models\Order::class);
+        return $this->belongsTo(Order::class);
     }
 }

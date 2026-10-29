@@ -1,17 +1,14 @@
 <?php
 
 namespace App\Models;
-
-use App\Models\Coupon;
-use App\Models\DeliveryStatusLog;
-use App\Models\Product;
+use App\Services\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Auditable;
 
     protected $fillable = [
         'user_id',
@@ -51,6 +48,8 @@ class Order extends Model
         'cancelled_at',
         'returned_at',
         'admin_note',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -65,73 +64,111 @@ class Order extends Model
         'discount_amount'          => 'decimal:2',
         'delivery_charge'          => 'decimal:2',
         'total_amount'             => 'decimal:2',
+        'quantity'                 => 'integer',
+        'delivery_code_attempts'   => 'integer',
     ];
 
-    // ── Relations ──
+    // ═══ Relations ═══
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
     public function product()
     {
         return $this->belongsTo(Product::class);
     }
+
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
     }
-    public function deliveryMan()
+
+    public function items()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->hasMany(OrderItem::class);
     }
-    public function vendor()
-    {
-        return $this->belongsTo(User::class, 'vendor_id');
-    }
+
     public function statusLogs()
     {
         return $this->hasMany(DeliveryStatusLog::class)->latest();
     }
 
-    // ── Scopes ──
+    public function deliveryMan()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    // ═══ Scopes ═══
+
     public function scopeDelivery($q)
     {
         return $q->where('order_type', 'delivery');
     }
+
     public function scopePickup($q)
     {
         return $q->where('order_type', 'pickup');
     }
+
     public function scopeStatus($q, $status)
     {
         return $q->where('status', $status);
     }
+
     public function scopeForDeliveryMan($q, $userId)
     {
         return $q->where('assigned_to', $userId);
     }
+
     public function scopeForVendor($q, $userId)
     {
         return $q->where('vendor_id', $userId);
     }
 
-    // ── Helpers ──
+    // ═══ Helpers ═══
+
     public function isPickup(): bool
     {
         return $this->order_type === 'pickup';
     }
+
     public function isDelivered(): bool
     {
         return $this->status === 'delivered';
     }
+
     public function isPickedUp(): bool
     {
         return $this->status === 'picked_up';
     }
+
     public function isCancelled(): bool
     {
         return $this->status === 'cancelled';
     }
+
     public function isPaid(): bool
     {
         return $this->payment_status === 'paid';
@@ -160,15 +197,5 @@ class Order extends Model
             'returned'         => ['label' => 'Returned',         'color' => '#fb923c'],
             default            => ['label' => ucfirst($this->status), 'color' => '#94a3b8'],
         };
-    }
-
-    public function items()
-    {
-        return $this->hasMany(OrderItem::class);
-    }
-
-    public function reviews()
-    {
-        return $this->hasMany(Review::class);
     }
 }

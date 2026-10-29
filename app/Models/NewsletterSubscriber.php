@@ -11,13 +11,19 @@ class NewsletterSubscriber extends Model
     use HasFactory;
 
     protected $fillable = [
-        'email', 'token', 'is_active',
-        'subscribed_at', 'unsubscribed_at', 'ip_address',
+        'email',
+        'token',
+        'is_active',
+        'subscribed_at',
+        'unsubscribed_at',
+        'ip_address',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'subscribed_at' => 'datetime',
+        'is_active'       => 'boolean',
+        'subscribed_at'   => 'datetime',
         'unsubscribed_at' => 'datetime',
     ];
 
@@ -30,13 +36,11 @@ class NewsletterSubscriber extends Model
         });
     }
 
-    // ── Scopes ──
     public function scopeActive($q)
     {
         return $q->where('is_active', true);
     }
 
-    // ── Helpers ──
     public function isActive(): bool
     {
         return $this->is_active === true;
@@ -45,7 +49,7 @@ class NewsletterSubscriber extends Model
     public function unsubscribe(): void
     {
         $this->update([
-            'is_active' => false,
+            'is_active'       => false,
             'unsubscribed_at' => now(),
         ]);
     }

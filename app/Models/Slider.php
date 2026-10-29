@@ -5,29 +5,40 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Storage;
+use Illuminate\Support\Facades\Storage;
 
 class Slider extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'title', 'subtitle',
-        'image', 'bg_image',
-        'button_text', 'link_type', 'link_value',
-        'text_position', 'badge_text', 'badge_color',
-        'sort_order', 'is_active',
-        'starts_at', 'ends_at',
+        'title',
+        'subtitle',
+        'image',
+        'bg_image',
+        'button_text',
+        'link_type',
+        'link_value',
+        'text_position',
+        'badge_text',
+        'badge_color',
+        'sort_order',
+        'is_active',
+        'starts_at',
+        'ends_at',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'  => 'boolean',
         'sort_order' => 'integer',
-        'starts_at' => 'datetime',
-        'ends_at' => 'datetime',
+        'starts_at'  => 'datetime',
+        'ends_at'    => 'datetime',
     ];
 
-    // ── Scopes ──
+    // ═══ Scopes ═══
+
     public function scopeActive($q)
     {
         return $q->where('is_active', true)
@@ -44,7 +55,8 @@ class Slider extends Model
         return $q->orderBy('sort_order')->orderByDesc('id');
     }
 
-    // ── Helpers ──
+    // ═══ Helpers ═══
+
     public function getImageUrlAttribute(): string
     {
         return $this->image
@@ -68,12 +80,9 @@ class Slider extends Model
     public function hasBgImage(): bool
     {
         return ! empty($this->bg_image)
-            && \Storage::disk('public')->exists($this->bg_image);
+            && Storage::disk('public')->exists($this->bg_image);
     }
 
-    /**
-     * Get CTA link URL based on link_type.
-     */
     public function getCtaUrlAttribute(): string
     {
         if (! $this->link_value) {
@@ -84,7 +93,7 @@ class Slider extends Model
             'product'  => route('products.show', $this->link_value),
             'category' => route('products.index', ['category' => $this->link_value]),
             'custom'   => url($this->link_value),
-            default    => $this->link_value, // direct URL
+            default    => $this->link_value,
         };
     }
 

@@ -1,16 +1,21 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
 {
+    public function __construct(protected AuditLogService $audit) {}
+
     public function index(Request $request)
     {
         $query = User::with('roles');
@@ -28,11 +33,7 @@ class UserController extends Controller
         }
 
         if ($status = $request->query('status')) {
-            if ($status === 'active') {
-                $query->where('status', 1);
-            } elseif ($status === 'deactive') {
-                $query->where('status', 2);
-            }
+            $query->where('is_active', $status === 'active');
         }
 
         $users = $query->latest()->paginate(15)->withQueryString();
@@ -60,26 +61,38 @@ class UserController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'roles'       => 'required|array|min:1',
             'roles.*'     => 'exists:roles,name',
-            'status'      => 'nullable|in:1,2',
+            'is_active'   => 'nullable|boolean',
         ]);
 
-        $user = User::create([
-            'name'        => $data['name'],
-            'email'       => $data['email'],
-            'password'    => Hash::make($data['password']),
-            'phone'       => $data['phone'] ?? null,
-            'address'     => $data['address'] ?? null,
-            'city'        => $data['city'] ?? null,
-            'postal_code' => $data['postal_code'] ?? null,
-            'status'      => $data['status'] ?? 1,
-        ]);
+        try {
+            $user = User::create([
+                'name'        => $data['name'],
+                'email'       => $data['email'],
+                'password'    => Hash::make($data['password']),
+                'phone'       => $data['phone'] ?? null,
+                'address'     => $data['address'] ?? null,
+                'city'        => $data['city'] ?? null,
+                'postal_code' => $data['postal_code'] ?? null,
+                'is_active'   => $request->boolean('is_active', true),
+                'created_by'  => auth()->id(),
+            ]);
 
-        $user->syncRoles($data['roles']);
+            $user->syncRoles($data['roles']);
 
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+            app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User created successfully with roles.');
+            $this->audit->logAction(
+                "User created: {$user->name} ({$user->email})",
+                $user,
+                ['new' => $user->only(['name', 'email', 'is_active'])]
+            );
+
+            return redirect()->route('admin.users.index')
+                ->with('success', 'User created successfully with roles.');
+        } catch (\Throwable $e) {
+            Log::error('User create failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not create user.')->withInput();
+        }
     }
 
     public function edit(User $user)
@@ -93,11 +106,7 @@ class UserController extends Controller
     {
         $data = $request->validate([
             'name'        => 'required|string|max:255',
-            'email'       => [
-                'required',
-                'email',
-                Rule::unique('users')->ignore($user->id),
-            ],
+            'email'       => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'password'    => 'nullable|string|min:8|confirmed',
             'phone'       => 'nullable|string|max:20',
             'address'     => 'nullable|string',
@@ -105,79 +114,85 @@ class UserController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'roles'       => 'required|array|min:1',
             'roles.*'     => 'exists:roles,name',
-            'status'      => 'nullable|in:1,2',
+            'is_active'   => 'nullable|boolean',
         ]);
 
-        // Prevent admin from changing own roles
         $isSelf = $user->id === auth()->id();
 
-        $user->update([
-            'name'        => $data['name'],
-            'email'       => $data['email'],
-            'phone'       => $data['phone'] ?? null,
-            'address'     => $data['address'] ?? null,
-            'city'        => $data['city'] ?? null,
-            'postal_code' => $data['postal_code'] ?? null,
-            'status'      => $data['status'] ?? 1,
-        ]);
-
-        if (!empty($data['password'])) {
+        try {
             $user->update([
-                'password' => Hash::make($data['password']),
+                'name'        => $data['name'],
+                'email'       => $data['email'],
+                'phone'       => $data['phone'] ?? null,
+                'address'     => $data['address'] ?? null,
+                'city'        => $data['city'] ?? null,
+                'postal_code' => $data['postal_code'] ?? null,
+                'is_active'   => $request->boolean('is_active', true),
+                'updated_by'  => auth()->id(),
             ]);
+
+            if (! empty($data['password'])) {
+                $user->update(['password' => Hash::make($data['password'])]);
+            }
+
+            if (! $isSelf) {
+                $user->syncRoles($data['roles']);
+            }
+
+            app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+            return redirect()->route('admin.users.index')
+                ->with('success', $isSelf ? 'Profile updated (roles not changed for self).' : 'User updated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('User update failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not update user.')->withInput();
         }
-
-        if (!$isSelf) {
-            $user->syncRoles($data['roles']);
-        }
-
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
-
-        return redirect()->route('admin.users.index')
-            ->with(
-                'success',
-                $isSelf
-                    ? 'Profile updated (roles not changed for self).'
-                    : 'User updated successfully.'
-            );
     }
 
     public function destroy(User $user)
     {
         if ($user->id === auth()->id()) {
-            return back()->with(
-                'error',
-                'You cannot delete your own account.'
-            );
+            return back()->with('error', 'You cannot delete your own account.');
         }
 
-        // Prevent deleting last admin
         if ($user->hasRole('admin') && User::role('admin')->count() <= 1) {
-            return back()->with(
-                'error',
-                'Cannot delete the last admin user.'
-            );
+            return back()->with('error', 'Cannot delete the last admin user.');
         }
 
-        $user->delete();
+        try {
+            $name = $user->name;
+            $email = $user->email;
+            $id = $user->id;
 
-        return back()->with('success', 'User deleted.');
+            $user->delete();
+
+            $this->audit->logAction("User deleted: {$name} ({$email}, ID: {$id})");
+
+            return back()->with('success', 'User deleted.');
+        } catch (\Throwable $e) {
+            Log::error('User delete failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not delete user.');
+        }
     }
 
     public function toggle(User $user)
     {
         if ($user->id === auth()->id()) {
-            return back()->with(
-                'error',
-                'You cannot deactivate your own account.'
-            );
+            return back()->with('error', 'You cannot deactivate your own account.');
         }
 
-        // 1 = Active, 2 = Deactive
-        $user->update([
-            'status' => $user->status == 1 ? 2 : 1,
-        ]);
+        try {
+            $user->update(['is_active' => ! $user->is_active]);
 
-        return back()->with('success', 'User status updated.');
+            $this->audit->logAction(
+                "User status toggled: {$user->name} → " . ($user->is_active ? 'Active' : 'Inactive'),
+                $user
+            );
+
+            return back()->with('success', 'User status updated.');
+        } catch (\Throwable $e) {
+            Log::error('User toggle failed: ' . $e->getMessage());
+            return back()->with('error', 'Could not update status.');
+        }
     }
 }

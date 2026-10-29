@@ -12,6 +12,7 @@ class SslCommerzTransaction extends Model
         'user_id',
         'product_id',
         'coupon_id',
+        'order_id',
         'tran_id',
         'val_id',
         'bank_tran_id',
@@ -24,7 +25,8 @@ class SslCommerzTransaction extends Model
         'status',
         'gateway_status',
         'raw_response',
-        'order_id',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -37,16 +39,19 @@ class SslCommerzTransaction extends Model
     {
         return $this->belongsTo(User::class);
     }
+
     public function product()
     {
         return $this->belongsTo(Product::class);
     }
+
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
     }
+
     public function order()
     {
-        return $this->belongsTo(\App\Models\Order::class);
+        return $this->belongsTo(Order::class);
     }
 }

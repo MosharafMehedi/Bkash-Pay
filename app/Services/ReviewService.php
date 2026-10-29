@@ -12,23 +12,14 @@ use Illuminate\Validation\ValidationException;
 
 class ReviewService
 {
-    // ═══════════════════════════════════════════════════════════
-    //  REVIEWS
-    // ═══════════════════════════════════════════════════════════
-
-    /**
-     * Add a review for a product.
-     */
     public function addReview(User $user, Product $product, array $data): Review
     {
-        // Already reviewed?
         if ($this->hasReviewed($user, $product)) {
             throw ValidationException::withMessages([
                 'review' => 'You have already reviewed this product.',
             ]);
         }
 
-        // Can review?
         if (! $this->canReview($user, $product)) {
             throw ValidationException::withMessages([
                 'review' => 'You cannot review this product.',
@@ -36,7 +27,6 @@ class ReviewService
         }
 
         return DB::transaction(function () use ($user, $product, $data) {
-            // Find delivered order for verified badge
             $deliveredOrder = Order::where('user_id', $user->id)
                 ->whereIn('status', ['delivered', 'picked_up'])
                 ->whereHas('items', function ($q) use ($product) {
@@ -56,16 +46,12 @@ class ReviewService
                 'is_verified' => $deliveredOrder !== null,
             ]);
 
-            // Recalculate product rating
             $this->recalculateRating($product);
 
             return $review;
         });
     }
 
-    /**
-     * Update an existing review.
-     */
     public function updateReview(Review $review, array $data): Review
     {
         return DB::transaction(function () use ($review, $data) {
@@ -76,64 +62,40 @@ class ReviewService
                 'edited_at' => now(),
             ]);
 
-            // Recalculate if rating changed
             $this->recalculateRating($review->product);
 
             return $review->fresh();
         });
     }
 
-    /**
-     * Delete a review + recalculate rating.
-     */
     public function deleteReview(Review $review): void
     {
         DB::transaction(function () use ($review) {
             $product = $review->product;
-
-            // Delete (cascade deletes replies)
             $review->delete();
 
-            // Recalculate
             if ($product) {
                 $this->recalculateRating($product);
             }
         });
     }
 
-    /**
-     * Approve a review.
-     */
     public function approveReview(Review $review): Review
     {
         $review->update(['is_approved' => true]);
         $this->recalculateRating($review->product);
-
         return $review->fresh();
     }
 
-    /**
-     * Reject a review (hidden from public).
-     */
     public function rejectReview(Review $review): Review
     {
         $review->update(['is_approved' => false]);
         $this->recalculateRating($review->product);
-
         return $review->fresh();
     }
 
-    // ═══════════════════════════════════════════════════════════
-    //  REPLIES
-    // ═══════════════════════════════════════════════════════════
-
-    /**
-     * Add a reply to a review.
-     * Only 1-level nesting allowed.
-     */
     public function addReply(Review $review, User $user, string $comment, ?int $parentId = null): ReviewReply
     {
-        // Validate parent (must be top-level)
         if ($parentId) {
             $parent = ReviewReply::find($parentId);
 
@@ -150,7 +112,6 @@ class ReviewService
             }
         }
 
-        // Is admin?
         $isAdmin = $user->hasRole('admin');
 
         return ReviewReply::create([
@@ -163,9 +124,6 @@ class ReviewService
         ]);
     }
 
-    /**
-     * Update own reply.
-     */
     public function updateReply(ReviewReply $reply, string $comment): ReviewReply
     {
         $reply->update([
@@ -176,21 +134,11 @@ class ReviewService
         return $reply->fresh();
     }
 
-    /**
-     * Delete a reply.
-     */
     public function deleteReply(ReviewReply $reply): void
     {
         $reply->delete();
     }
 
-    // ═══════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═══════════════════════════════════════════════════════════
-
-    /**
-     * Recalculate product's rating + review_count.
-     */
     public function recalculateRating(?Product $product): void
     {
         if (! $product) {
@@ -208,9 +156,6 @@ class ReviewService
         ]);
     }
 
-    /**
-     * Has this user already reviewed the product?
-     */
     public function hasReviewed(User $user, Product $product): bool
     {
         return Review::where('user_id', $user->id)
@@ -218,9 +163,6 @@ class ReviewService
             ->exists();
     }
 
-    /**
-     * Get user's existing review for a product (if any).
-     */
     public function getUserReview(User $user, Product $product): ?Review
     {
         return Review::where('user_id', $user->id)
@@ -228,26 +170,17 @@ class ReviewService
             ->first();
     }
 
-    /**
-     * Can this user review this product?
-     */
     public function canReview(User $user, Product $product): bool
     {
-        // Product must be active
         if (! $product->is_active) {
             return false;
         }
-
-        if ($user->status != 1) {
+        if (! $user->is_active) {
             return false;
         }
-
         return true;
     }
 
-    /**
-     * Is this a verified purchase? (delivered order exists)
-     */
     public function isVerifiedPurchase(User $user, Product $product): bool
     {
         return Order::where('user_id', $user->id)
@@ -258,10 +191,6 @@ class ReviewService
             ->exists();
     }
 
-    /**
-     * Get rating breakdown (count per star).
-     * Returns [5 => 12, 4 => 6, 3 => 3, 2 => 1, 1 => 1]
-     */
     public function getRatingBreakdown(Product $product): array
     {
         $rows = Review::where('product_id', $product->id)
@@ -279,27 +208,22 @@ class ReviewService
         return $breakdown;
     }
 
-    /**
-     * Get reviews with filters + pagination.
-     */
     public function getReviews(Product $product, array $filters = [], int $perPage = 10)
     {
         $query = Review::with(['user', 'topLevelReplies.user'])
             ->where('product_id', $product->id)
             ->where('is_approved', true);
 
-        // Filter by rating
         if (! empty($filters['rating'])) {
             $query->where('rating', (int) $filters['rating']);
         }
 
-        // Sort
         $sort = $filters['sort'] ?? 'newest';
         match ($sort) {
-            'oldest'       => $query->oldest(),
-            'highest'      => $query->orderByDesc('rating'),
-            'lowest'       => $query->orderBy('rating'),
-            default        => $query->latest(),
+            'oldest'  => $query->oldest(),
+            'highest' => $query->orderByDesc('rating'),
+            'lowest'  => $query->orderBy('rating'),
+            default   => $query->latest(),
         };
 
         return $query->paginate($perPage)->withQueryString();

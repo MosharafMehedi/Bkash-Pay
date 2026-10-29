@@ -13,32 +13,24 @@ class CheckoutController extends Controller
         protected CartService $cart,
         protected CheckoutService $checkout,
         protected OrderService $orderService,
-    ) {
-    }
+    ) {}
 
-    /**
-     * Checkout page — multi-item from cart.
-     */
     public function show()
     {
         $user = auth()->user();
 
-        // Cart empty? → redirect
         if ($this->cart->isEmpty($user)) {
             return redirect()->route('products.index')
                 ->with('error', 'Your cart is empty. Add products before checkout.');
         }
 
-        $items     = $this->cart->getItems($user);
-        $subtotal  = $this->cart->getSubtotal($user);
+        $items = $this->cart->getItems($user);
+        $subtotal = $this->cart->getSubtotal($user);
         $itemCount = $this->cart->getCount($user);
 
         return view('checkout.show', compact('items', 'subtotal', 'itemCount'));
     }
 
-    /**
-     * AJAX: Calculate delivery charge for a city.
-     */
     public function deliveryCharge(Request $request)
     {
         $request->validate([

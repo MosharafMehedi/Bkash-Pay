@@ -11,28 +11,19 @@ use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
-    public function __construct(protected CartService $cart)
-    {
-    }
+    public function __construct(protected CartService $cart) {}
 
-    /**
-     * Cart page.
-     */
     public function index()
     {
-        $user  = auth()->user();
+        $user = auth()->user();
         $items = $this->cart->getItems($user);
-
-        $subtotal     = $this->cart->getSubtotal($user);
-        $itemCount    = $this->cart->getCount($user);
-        $uniqueCount  = $this->cart->getUniqueCount($user);
+        $subtotal = $this->cart->getSubtotal($user);
+        $itemCount = $this->cart->getCount($user);
+        $uniqueCount = $this->cart->getUniqueCount($user);
 
         return view('cart.index', compact('items', 'subtotal', 'itemCount', 'uniqueCount'));
     }
 
-    /**
-     * AJAX — Add to cart.
-     */
     public function add(Request $request)
     {
         $request->validate([
@@ -40,7 +31,7 @@ class CartController extends Controller
             'quantity'   => 'required|integer|min:1|max:5',
         ]);
 
-        $user    = $request->user();
+        $user = $request->user();
         $product = Product::findOrFail($request->product_id);
 
         try {
@@ -69,12 +60,8 @@ class CartController extends Controller
         }
     }
 
-    /**
-     * AJAX — Update cart item quantity.
-     */
     public function update(Request $request, CartItem $cartItem)
     {
-        // Authorization
         abort_unless($cartItem->user_id === auth()->id(), 403);
 
         $request->validate([
@@ -83,7 +70,6 @@ class CartController extends Controller
 
         try {
             $this->cart->update($cartItem, (int) $request->quantity);
-
             $user = auth()->user();
 
             return response()->json([
@@ -107,15 +93,11 @@ class CartController extends Controller
         }
     }
 
-    /**
-     * AJAX — Remove cart item.
-     */
     public function remove(CartItem $cartItem)
     {
         abort_unless($cartItem->user_id === auth()->id(), 403);
 
         $this->cart->remove($cartItem);
-
         $user = auth()->user();
 
         return response()->json([
@@ -126,9 +108,6 @@ class CartController extends Controller
         ]);
     }
 
-    /**
-     * AJAX — Clear cart.
-     */
     public function clear()
     {
         $user = auth()->user();
@@ -142,9 +121,6 @@ class CartController extends Controller
         ]);
     }
 
-    /**
-     * AJAX — Get cart count (for header badge).
-     */
     public function count()
     {
         return response()->json([
